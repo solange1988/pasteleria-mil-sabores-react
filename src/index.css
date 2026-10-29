@@ -1,0 +1,53 @@
+/* Fuentes de la versión HTML: Lato para el texto, Pacifico para títulos */
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Pacifico&display=swap');
+
+/* Bootstrap usa estas variables: las cambiamos para mantener los colores de la pastelería */
+:root {
+  --bs-body-bg: #FFF5E1;            /* crema pastel */
+  --bs-body-color: #5D4037;         /* marrón oscuro */
+  --bs-body-font-family: 'Lato', sans-serif;
+  --bs-link-color-rgb: 139, 69, 19; /* chocolate */
+  --bs-link-hover-color-rgb: 93, 64, 55;
+}
+
+h1, h2, .titulo {
+  font-family: 'Pacifico', cursive;
+  color: #8B4513;
+}
+
+.barra-rosa { background-color: #FFC0CB; }
+.pie-chocolate { background-color: #8B4513; }
+
+/* variant="chocolate" en <Button> genera la clase btn-chocolate */
+.btn-chocolate {
+  --bs-btn-color: #fff;
+  --bs-btn-bg: #8B4513;
+  --bs-btn-border-color: #8B4513;
+  --bs-btn-hover-color: #fff;
+  --bs-btn-hover-bg: #5D4037;
+  --bs-btn-hover-border-color: #5D4037;
+  --bs-btn-active-bg: #5D4037;
+  --bs-btn-active-color: #fff;
+  --bs-btn-disabled-color: #fff;
+  --bs-btn-disabled-bg: #b9977d;
+  --bs-btn-disabled-border-color: #b9977d;
+}
+
+.img-producto {
+  height: 190px;
+  object-fit: cover;
+}
+
+.img-portada {
+  width: 100%;
+  max-height: 360px;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+.miniatura {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 6px;
+}
