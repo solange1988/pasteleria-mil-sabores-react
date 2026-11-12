@@ -1,4 +1,5 @@
 import { Navbar, Nav, Container, Button, Badge } from 'react-bootstrap'
+import { puede } from '../auth/permisos.js'
 
 // Props:
 // - cantidadCarrito: número de unidades en el carrito
@@ -22,13 +23,16 @@ function Encabezado({ cantidadCarrito, usuario, alCerrarSesion }) {
             <Nav.Link href="#/nosotros">Nosotros</Nav.Link>
             <Nav.Link href="#/blogs">Blogs</Nav.Link>
             <Nav.Link href="#/contacto">Contacto</Nav.Link>
-            {/* El enlace al panel solo se muestra a quien es administrador */}
-            {usuario?.rol === 'Administrador' && <Nav.Link href="#/admin">Admin</Nav.Link>}
+            {/* El enlace al panel solo aparece para los roles que pueden entrar (Administrador y Vendedor) */}
+            {puede(usuario, 'panel') && (
+              <Nav.Link href="#/admin">{usuario.rol === 'Vendedor' ? 'Panel vendedor' : 'Admin'}</Nav.Link>
+            )}
           </Nav>
           <div className="d-flex flex-wrap align-items-center gap-2 py-2 py-lg-0">
             {usuario ? (
               <>
                 <a href="#/perfil" className="small text-reset">Hola, {usuario.nombre}</a>
+                <Badge bg="secondary">{usuario.rol}</Badge>
                 <Button variant="outline-dark" size="sm" onClick={alCerrarSesion}>
                   Cerrar sesión
                 </Button>

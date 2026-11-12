@@ -2,9 +2,9 @@ import { Table, Alert, Button, Form } from 'react-bootstrap'
 import { ROLES } from '../data/usuarios.js'
 
 // Tabla de usuarios para el panel de admin.
-// - correoActual: el administrador con sesión iniciada (no puede eliminarse a sí mismo)
-// - alCambiarRol(correo, rol) y alEliminar(correo): funciones que entrega el padre
-function ListaUsuarios({ usuarios, correoActual, alCambiarRol, alEliminar }) {
+// - idActual: el administrador con sesión iniciada (no puede eliminarse ni cambiarse el rol a sí mismo)
+// - alCambiarRol(usuario, rol) y alEliminar(usuario): funciones que entrega el padre
+function ListaUsuarios({ usuarios, idActual, alCambiarRol, alEliminar }) {
   if (usuarios.length === 0) {
     return <Alert variant="info">No hay usuarios registrados.</Alert>
   }
@@ -16,7 +16,7 @@ function ListaUsuarios({ usuarios, correoActual, alCambiarRol, alEliminar }) {
       </thead>
       <tbody>
         {usuarios.map((u) => (
-          <tr key={u.correo}>
+          <tr key={u.id}>
             <td>{u.nombre}</td>
             <td>{u.correo}</td>
             <td>
@@ -24,8 +24,8 @@ function ListaUsuarios({ usuarios, correoActual, alCambiarRol, alEliminar }) {
                 size="sm"
                 aria-label={`Rol de ${u.correo}`}
                 value={u.rol}
-                disabled={u.correo === correoActual}
-                onChange={(e) => alCambiarRol(u.correo, e.target.value)}
+                disabled={u.id === idActual}
+                onChange={(e) => alCambiarRol(u, e.target.value)}
               >
                 {ROLES.map((rol) => <option key={rol} value={rol}>{rol}</option>)}
               </Form.Select>
@@ -35,8 +35,8 @@ function ListaUsuarios({ usuarios, correoActual, alCambiarRol, alEliminar }) {
                 size="sm"
                 variant="outline-danger"
                 aria-label={`Eliminar a ${u.correo}`}
-                disabled={u.correo === correoActual}
-                onClick={() => alEliminar(u.correo)}
+                disabled={u.id === idActual}
+                onClick={() => alEliminar(u)}
               >
                 Eliminar
               </Button>
