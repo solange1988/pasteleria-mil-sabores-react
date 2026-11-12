@@ -1,135 +1,114 @@
-# Pastelería Mil Sabores — versión React
+# Pastelería Mil Sabores · Frontend (React)
 
-Tienda online hecha con **React + Vite + React-Bootstrap**. Las pruebas usan **Jasmine** (el framework: `describe`, `it`, `expect`, espías) ejecutado con **Karma** en un Chrome real, junto con **Testing Library** para probar los componentes.
-Proyecto de la Evaluación Parcial 2 de DSY1104 Desarrollo Fullstack II.
+Tienda en línea hecha con **React + Vite + React-Bootstrap**, conectada a un backend **Spring Boot** mediante una API REST.
+Proyecto de DSY1104 Desarrollo Full Stack II (Evaluaciones Parciales 2 y 3).
+
+- Backend: https://github.com/solange1988/pasteleria-mil-sabores-backend
+- Pruebas: **Jasmine + Karma** con **Testing Library** (222 pruebas, cobertura sobre 88 %)
 
 ---
 
-## 1. Cómo abrirlo (primera vez)
+## 1. Cómo ejecutarlo
 
-Necesitas tener instalado **Node.js** (versión 20 o más nueva) y **VS Code**.
+Necesitas **Node.js 20 o más nuevo** y el **backend encendido** en `http://localhost:8080` (ver su README).
 
-1. Descomprime el `.zip` y abre la carpeta `pasteleria-react` en VS Code (*Archivo → Abrir carpeta*).
-2. Abre la terminal de VS Code (*Terminal → Nueva terminal*).
-3. Instala las dependencias (solo la primera vez; crea la carpeta `node_modules`):
+```bash
+npm install      # solo la primera vez
+npm run dev      # abre http://localhost:5173
+```
 
-   ```bash
-   npm install
-   ```
+Si el backend está en otra dirección, copia `.env.example` como `.env` y cambia `VITE_API_URL`.
 
-4. Levanta la página:
+### Usuarios de prueba (los crea el backend)
 
-   ```bash
-   npm run dev
-   ```
+| Rol | Correo | Contraseña | Qué ve |
+|---|---|---|---|
+| Administrador | admin@duoc.cl | admin123 | Tienda + panel completo (productos, stock, órdenes, usuarios, reportes) |
+| Vendedor | vendedor@duoc.cl | vende123 | Tienda + «Panel vendedor»: productos y órdenes, solo lectura |
+| Cliente | cliente@gmail.com | cliente123 | Solo la tienda y su perfil |
 
-5. Abre el enlace que aparece (normalmente http://localhost:5173). Si cambias algo en el código y guardas, la página se actualiza sola.
-6. Para detenerla: `Ctrl + C` en la terminal.
-
-## 2. Comandos útiles
+## 2. Comandos
 
 | Comando | Para qué sirve |
 |---|---|
 | `npm run dev` | Levanta la página para trabajar |
-| `npm test` | Karma abre Chrome y corre las pruebas; las vuelve a correr cada vez que guardas |
-| `npm run test:ejecutar` | Corre las pruebas una sola vez (Chrome sin ventana) |
-| `npm run test:cobertura` | Corre las pruebas y mide la cobertura de **todos** los archivos de `src/` (crea la carpeta `cobertura/`; abre `cobertura/html/index.html`) |
-| `npm run build` | Genera la versión final en la carpeta `dist/` |
+| `npm test` | Karma abre Chrome y corre las pruebas cada vez que guardas |
+| `npm run test:ejecutar` | Corre las pruebas una vez (Chrome sin ventana) |
+| `npm run test:cobertura` | Mide la cobertura (abre `cobertura/html/index.html`) |
+| `npm run build` | Genera la versión final en `dist/` |
 
-## 3. Dónde está cada cosa (para modificar)
+## 3. Integración con el backend
 
 ```
-public/img/            Imágenes (se usan como "/img/nombre.jpg")
+Página (pages/*.jsx)
+   │  usa
+   ▼
+data/productos.js · data/usuarios.js · data/ordenes.js     ← una función por endpoint
+   │  llaman a
+   ▼
+api/cliente.js  ── fetch ──►  http://localhost:8080/api/v1/...  ──►  Spring Boot ──► MySQL
+   │  agrega "Authorization: Bearer <token>", convierte errores, renueva el token
+   ▼
+auth/sesion.js (localStorage)     auth/permisos.js (qué ve cada rol)
+```
+
+| Archivo | Qué hace |
+|---|---|
+| `src/api/cliente.js` | Única puerta hacia la API: URL base, JSON, token, manejo de errores (400/401/403/404) y renovación automática del token |
+| `src/auth/sesion.js` | Guarda `{ token, tokenRenovacion, usuario }` en localStorage para que la sesión siga al recargar |
+| `src/auth/permisos.js` | Permisos por rol (Administrador, Vendedor, Cliente) |
+| `src/components/RutaProtegida.jsx` | Protege páginas: sin sesión pide login; sin permiso muestra «No tienes permisos» |
+| `src/hooks/useCarga.js` + `components/Cargando.jsx` | Cargan datos de la API mostrando «Cargando...» o el error con «Reintentar» |
+
+### Sesión (persistencia y seguridad)
+
+1. **Login**: `POST /api/v1/auth/login` devuelve un token de acceso (30 min) y uno de renovación (7 días). Se guardan en localStorage; la contraseña nunca se guarda.
+2. **Cada petición** lleva `Authorization: Bearer <token>`.
+3. **Al recargar la página** se lee la sesión guardada y se confirma con `GET /api/v1/usuarios/perfil`. Así se usa el rol real de la base de datos (si alguien edita localStorage a mano, no gana permisos).
+4. **Token vencido (401)**: se pide uno nuevo con `POST /api/v1/auth/renovar` y se repite la petición. Si no se puede, se cierra la sesión y se avisa «Tu sesión expiró».
+5. **Cerrar sesión** borra todo. Si se cierra en otra pestaña, esta también se entera.
+
+### Restricciones por rol
+
+| Rol | Menú | Panel (`#/admin`) |
+|---|---|---|
+| Visitante | Tienda | Pide iniciar sesión |
+| Cliente | Tienda + Perfil | «No tienes permisos para ver esta página» |
+| Vendedor | + «Panel vendedor» | Pestañas **Productos** (solo lectura, «Ver detalle») y **Órdenes** (lista + detalle, sin cambiar estado) |
+| Administrador | + «Admin» | Productos (CRUD), Stock crítico, Órdenes (cambiar estado), Usuarios (crear, cambiar rol, eliminar), Reportes |
+
+El frontend solo decide qué se **muestra**; la seguridad real está en el backend, que responde 401/403 si falta el token o el rol.
+
+## 4. Estructura
+
+```
 src/
-  main.jsx             Punto de entrada: carga Bootstrap, los estilos y <App />
-  App.jsx              Navegación entre páginas + estado del carrito y del usuario
-  index.css            Colores y fuentes de la pastelería
-  components/          Piezas reutilizables
-    Encabezado.jsx       Menú superior (props: cantidadCarrito, usuario, alCerrarSesion)
-    PiePagina.jsx        Pie de página
-    TarjetaProducto.jsx  Tarjeta de un producto (props: producto, alAgregar)
-    Catalogo.jsx         Grilla de tarjetas (props: productos, alAgregar)
-    TablaCarrito.jsx     Tabla del carrito (se usa en Carrito y Checkout)
-    CampoTexto.jsx       Campo de formulario con etiqueta y mensaje de error
-    CamposRegion.jsx     Selects de región y comuna
-  pages/               Una por cada vista
-    Inicio, Productos, DetalleProducto, Carrito, Checkout,
-    Login, Registro, Contacto, Nosotros, Blogs, BlogDetalle, Admin
-  data/
-    productos.js         "Base de datos" de productos con CRUD (crear, leer, actualizar, eliminar) en localStorage
-    blogs.js             Noticias del blog
-    regiones.js          Regiones y comunas
-  utils/
-    carrito.js           Lógica del carrito (agregar, quitar, total...)
-    validaciones.js      Reglas de los formularios (las mismas de la versión HTML)
-    formato.js           Precio con formato chileno ($45.000)
-  hooks/
-    useFormulario.js     Estado y validación compartidos por todos los formularios
-  test/                Pruebas unitarias Jasmine (*.test.js) y `configuracion.js`
+  api/cliente.js        Cliente HTTP (fetch) hacia el backend
+  auth/                 sesion.js y permisos.js
+  data/                 productos.js, usuarios.js, ordenes.js (API) · blogs.js y regiones.js (datos fijos)
+  hooks/                useFormulario.js, useCarga.js
+  components/           Encabezado, Catalogo, TarjetaProducto, TablaCarrito, CampoTexto, CamposRegion,
+                        AdminProductos, ListaOrdenes, ListaUsuarios, FormUsuario, PanelReportes,
+                        RutaProtegida, Cargando, PiePagina
+  pages/                Inicio, Productos, DetalleProducto, Categorias, Ofertas, Carrito, Checkout,
+                        Registro, Login, Perfil, Admin, Nosotros, Blogs, BlogDetalle, Contacto
+  utils/                carrito, descuentos (vista previa), formato, reportes, validaciones
+  test/ y karma/        Pruebas (test/apiFalsa.js simula el backend reemplazando fetch)
 ```
 
-### Cambios típicos
+## 5. Pruebas
 
-- **Agregar o cambiar un producto:** edita `productosIniciales` en `src/data/productos.js` (pon la imagen en `public/img/`). Si ya habías abierto la página, entra a **Admin → Restaurar productos originales** para ver el cambio, porque los productos quedan guardados en el navegador (localStorage).
-- **Agregar una página nueva:**
-  1. Crea `src/pages/MiPagina.jsx`.
-  2. En `App.jsx`, impórtala y agrega un `case 'mipagina': return <MiPagina />` dentro de `paginaActual()`.
-  3. En `Encabezado.jsx`, agrega `<Nav.Link href="#/mipagina">Mi página</Nav.Link>`.
-- **Cambiar una regla de validación:** `src/utils/validaciones.js` (y su prueba en `src/test/validaciones.test.js`).
-- **Cambiar colores:** `src/index.css`.
+`npm run test:ejecutar` corre 222 pruebas. Las que tocan la API usan `src/test/apiFalsa.js`, que reemplaza `window.fetch` con un espía de Jasmine que responde como el backend. Así se prueba el camino completo (página → data → cliente → fetch) sin levantar Spring Boot:
 
-### Cómo funciona la navegación
+- Cliente de la API: URL versionada, token en el encabezado, errores, renovación del token y sesión expirada.
+- Sesión y permisos: persistencia en localStorage, roles y página inicial de cada rol.
+- Páginas: catálogo, detalle (404), checkout (pago aceptado, rechazado por stock y sin conexión), login, registro, perfil.
+- Panel: el administrador ve 5 pestañas; el vendedor solo 2 y en modo lectura.
 
-Cada página tiene su dirección después del `#`: `#/productos`, `#/producto/3`, `#/blog/1`, `#/admin`...
-`App.jsx` lee esa dirección y muestra la página que corresponde. El botón "atrás" del navegador funciona.
-
-## 4. Pruebas
-
-En total hay 198 pruebas (183 en `src/test/` y 15 en `src/karma/`), con Jasmine + Karma (`npm run test:ejecutar`). Cubren:
-
-- **Renderizado:** la tarjeta muestra nombre, precio y stock; el catálogo dibuja una tarjeta por producto.
-- **Renderizado condicional:** "Sin stock" y botón deshabilitado; aviso de catálogo vacío; los errores aparecen solo cuando hay errores.
-- **Props:** los componentes reciben datos y funciones (`alAgregar`, `alIniciarSesion`...).
-- **Estado:** el buscador filtra; los campos del formulario cambian al escribir.
-- **Eventos:** clic en botones y envío de formularios (`userEvent`).
-- **Mocks/espías:** `vi.fn()` para las funciones que llegan por props y `vi.spyOn(Storage.prototype, 'setItem')` para comprobar el guardado en localStorage.
-- **Lógica:** carrito, CRUD de productos y validaciones, incluidos los casos límite.
-
-## 5. Subir y actualizar en GitHub
-
-### Primera vez (repositorio nuevo)
-
-1. En github.com: **New repository** → nombre `pasteleria-mil-sabores-react` → **Public** → sin README → *Create repository*.
-2. En la terminal de VS Code, dentro de la carpeta del proyecto:
-
-   ```bash
-   git init
-   git add .
-   git commit -m "Migración de la tienda a React con pruebas"
-   git branch -M main
-   git remote add origin https://github.com/TU_USUARIO/pasteleria-mil-sabores-react.git
-   git push -u origin main
-   ```
-
-   (`node_modules` no se sube porque está en `.gitignore`. Quien clone el proyecto solo hace `npm install`.)
-
-### Cada vez que cambies algo
+## 6. GitHub
 
 ```bash
 git add .
 git commit -m "Describe aquí qué cambiaste"
 git push
 ```
-
-### Si trabajan varios en el equipo
-
-Antes de empezar a trabajar, trae los cambios de los demás:
-
-```bash
-git pull
-```
-
-### Si ya tenían un repositorio con la versión HTML
-
-Clónenlo, copien adentro el contenido de esta carpeta y suban los cambios con `add`, `commit` y `push`.
-Así el profe ve en el historial de commits el paso de HTML a React.
