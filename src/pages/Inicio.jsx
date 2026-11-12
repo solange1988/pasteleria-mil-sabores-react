@@ -1,11 +1,14 @@
 import { Container, Row, Col, Button, Ratio } from 'react-bootstrap'
 import Catalogo from '../components/Catalogo.jsx'
+import Cargando from '../components/Cargando.jsx'
+import useCarga from '../hooks/useCarga.js'
 import { listarProductos } from '../data/productos.js'
 
 const IDS_DESTACADOS = [1, 4, 5, 10]
 
 function Inicio({ alAgregar }) {
-  const destacados = listarProductos().filter((p) => IDS_DESTACADOS.includes(p.id))
+  // Los productos vienen del backend: GET /api/v1/productos
+  const carga = useCarga(listarProductos, [])
 
   return (
     <Container>
@@ -26,7 +29,11 @@ function Inicio({ alAgregar }) {
       </Row>
 
       <h2 className="text-center mb-4">Productos destacados</h2>
-      <Catalogo productos={destacados} alAgregar={alAgregar} />
+      <Cargando carga={carga}>
+        {(productos) => (
+          <Catalogo productos={productos.filter((p) => IDS_DESTACADOS.includes(p.id))} alAgregar={alAgregar} />
+        )}
+      </Cargando>
 
       <h2 className="text-center mt-5 mb-4">Conoce nuestra historia</h2>
       <div className="mx-auto" style={{ maxWidth: 720 }}>

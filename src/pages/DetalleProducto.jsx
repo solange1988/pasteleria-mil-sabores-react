@@ -1,12 +1,15 @@
 import { Container, Row, Col, Button, Badge, Alert } from 'react-bootstrap'
+import Cargando from '../components/Cargando.jsx'
+import useCarga from '../hooks/useCarga.js'
 import { obtenerProducto } from '../data/productos.js'
 import formatearPrecio, { porcentajeOferta } from '../utils/formato.js'
 import { precioVigente } from '../utils/carrito.js'
 
+// GET /api/v1/productos/{id}. Si el backend responde 404, el producto no existe.
 function DetalleProducto({ id, alAgregar }) {
-  const producto = obtenerProducto(id)
+  const carga = useCarga(() => obtenerProducto(id), [id])
 
-  if (!producto) {
+  if (carga.estado === 404) {
     return (
       <Container className="py-5">
         <Alert variant="warning">El producto no existe.</Alert>
@@ -15,12 +18,20 @@ function DetalleProducto({ id, alAgregar }) {
     )
   }
 
+  return (
+    <Container className="py-4">
+      <a href="#/productos">&larr; Volver a productos</a>
+      <Cargando carga={carga}>{(producto) => <Ficha producto={producto} alAgregar={alAgregar} />}</Cargando>
+    </Container>
+  )
+}
+
+function Ficha({ producto, alAgregar }) {
   const agotado = producto.stock === 0
   const oferta = porcentajeOferta(producto.precio, producto.precioOferta)
 
   return (
-    <Container className="py-4">
-      <a href="#/productos">&larr; Volver a productos</a>
+    <>
       <Row className="g-4 mt-1 align-items-center">
         <Col md={6}>
           <img src={producto.imagen} alt={producto.nombre} className="img-portada" />
@@ -42,7 +53,7 @@ function DetalleProducto({ id, alAgregar }) {
           </Button>
         </Col>
       </Row>
-    </Container>
+    </>
   )
 }
 

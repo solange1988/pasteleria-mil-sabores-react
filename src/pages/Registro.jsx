@@ -35,20 +35,26 @@ function Registro() {
   // resultado: null | { ok: true, descuento } | { ok: false, mensaje }
   const [resultado, setResultado] = useState(null)
 
-  function enviar(evento) {
+  const [enviando, setEnviando] = useState(false)
+
+  // POST /api/v1/auth/registro. El backend vuelve a validar todo (correo repetido, dominio, código...)
+  async function enviar(evento) {
     evento.preventDefault()
     if (!form.validarTodo()) {
       setResultado(null)
       return
     }
     const { confirmarCorreo, confirmarContrasena, ...datos } = form.valores // eslint-disable-line no-unused-vars
-    const respuesta = registrarUsuario(datos)
-    if (!respuesta.ok) {
-      setResultado(respuesta)
-      return
+    setEnviando(true)
+    try {
+      const respuesta = await registrarUsuario(datos)
+      setResultado({ ok: true, descuento: descuentoDe(respuesta.usuario) })
+      form.reiniciar()
+    } catch (error) {
+      setResultado({ ok: false, mensaje: error.message })
+    } finally {
+      setEnviando(false)
     }
-    setResultado({ ok: true, descuento: descuentoDe(respuesta.usuario) })
-    form.reiniciar()
   }
 
   return (
@@ -72,7 +78,9 @@ function Registro() {
           <CampoTexto etiqueta="Código promocional (opcional)" name="codigo" form={form} placeholder="Ej: FELICES50" />
           <CampoTexto etiqueta="Teléfono (opcional)" name="telefono" type="tel" form={form} autoComplete="tel" />
           <CamposRegion form={form} />
-          <Button type="submit" variant="chocolate" className="w-100">Registrar</Button>
+          <Button type="submit" variant="chocolate" className="w-100" disabled={enviando}>
+            {enviando ? 'Registrando...' : 'Registrar'}
+          </Button>
         </Form>
       </Card>
     </Container>

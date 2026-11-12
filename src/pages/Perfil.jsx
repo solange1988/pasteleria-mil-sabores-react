@@ -3,9 +3,11 @@ import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap'
 import CampoTexto from '../components/CampoTexto.jsx'
 import CamposRegion from '../components/CamposRegion.jsx'
 import ListaOrdenes from '../components/ListaOrdenes.jsx'
+import Cargando from '../components/Cargando.jsx'
 import useFormulario from '../hooks/useFormulario.js'
-import { actualizarUsuario, obtenerUsuario } from '../data/usuarios.js'
-import { listarOrdenesDe } from '../data/ordenes.js'
+import useCarga from '../hooks/useCarga.js'
+import { actualizarPerfil } from '../data/usuarios.js'
+import { listarMisOrdenes } from '../data/ordenes.js'
 import { descuentoDe } from '../utils/descuentos.js'
 import { validarNombreCompleto, validarFechaNacimiento, validarCodigoPromocional } from '../utils/validaciones.js'
 
@@ -15,8 +17,9 @@ const VALIDADORES = {
   codigo: validarCodigoPromocional,
 }
 
-// Perfil del cliente: actualizar sus datos, ver su descuento e historial de compras.
-// Props: usuario (objeto con sesión iniciada o null) y alGuardar (avisa a App que cambió)
+// Perfil del usuario: actualizar sus datos, ver su descuento e historial de compras.
+// Props: usuario (con sesión iniciada; App protege esta página con RutaProtegida)
+//        alGuardar(usuarioActualizado): avisa a App para actualizar la sesión
 function Perfil({ usuario, alGuardar }) {
   const form = useFormulario(
     {
@@ -30,29 +33,26 @@ function Perfil({ usuario, alGuardar }) {
     VALIDADORES,
   )
   const [guardado, setGuardado] = useState(false)
+  const [error, setError] = useState('')
+  // GET /api/v1/boletas/mias: solo las compras de este usuario (el backend lo identifica por el token)
+  const compras = useCarga(listarMisOrdenes, [])
 
-  if (!usuario) {
-    return (
-      <Container className="py-5 text-center">
-        <Alert variant="warning">Debes iniciar sesión para ver tu perfil.</Alert>
-        <Button href="#/login" variant="chocolate">Iniciar sesión</Button>
-      </Container>
-    )
-  }
-
-  function enviar(evento) {
+  // PUT /api/v1/usuarios/perfil
+  async function enviar(evento) {
     evento.preventDefault()
-    if (!form.validarTodo()) {
-      setGuardado(false)
-      return
+    setGuardado(false)
+    setError('')
+    if (!form.validarTodo()) return
+    try {
+      alGuardar(await actualizarPerfil(form.valores))
+      setGuardado(true)
+    } catch (e) {
+      setError(e.message)
     }
-    actualizarUsuario(usuario.correo, form.valores)
-    setGuardado(true)
-    alGuardar()
   }
 
   // El descuento se calcula con los datos ya guardados
-  const { porcentaje, motivo } = descuentoDe(obtenerUsuario(usuario.correo))
+  const { porcentaje, motivo } = descuentoDe(usuario)
 
   return (
     <Container className="py-4">
@@ -61,6 +61,7 @@ function Perfil({ usuario, alGuardar }) {
         <Col lg={5}>
           <Card className="shadow-sm border-0 p-4">
             {guardado && <Alert variant="success">Tus datos se actualizaron correctamente.</Alert>}
+            {error && <Alert variant="danger">{error}</Alert>}
             <p className="mb-3"><strong>Correo:</strong> {usuario.correo}</p>
             <Form noValidate onSubmit={enviar}>
               <CampoTexto etiqueta="Nombre completo" name="nombre" form={form} autoComplete="name" />
@@ -77,7 +78,7 @@ function Perfil({ usuario, alGuardar }) {
             {porcentaje > 0 ? `Tienes ${porcentaje}% de descuento: ${motivo}.` : 'Por ahora no tienes descuentos asociados a tu cuenta.'}
           </Alert>
           <h2 className="fs-4">Historial de compras</h2>
-          <ListaOrdenes ordenes={[...listarOrdenesDe(usuario.correo)].reverse()} />
+          <Cargando carga={compras}>{(ordenes) => <ListaOrdenes ordenes={[...ordenes].reverse()} />}</Cargando>
         </Col>
       </Row>
     </Container>

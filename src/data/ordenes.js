@@ -1,70 +1,28 @@
-// "Base de datos" simulada de órdenes de compra (se guarda en localStorage).
-// Cada orden: { numero, fecha, correo, cliente, direccion, lineas, subtotal, descuento,
-//               motivo, total, regalo, estado }
-
-const CLAVE = 'pms_ordenes_v1'
-const PRIMER_NUMERO = 1001
+// Órdenes de compra (boletas): ahora las crea y guarda el backend.
+// El backend calcula los precios, el descuento y valida el stock: el navegador solo envía
+// qué productos y cuántas unidades se compran.
+import { api } from '../api/cliente.js'
 
 export const ESTADOS = ['Pagada', 'En preparación', 'Enviada', 'Entregada', 'Pago rechazado']
+export const RECHAZADA = 'Pago rechazado'
 
-function leer() {
-  const guardado = localStorage.getItem(CLAVE)
-  return guardado ? JSON.parse(guardado) : []
-}
+// Público: un visitante también puede comprar. Si hay sesión, el token se envía solo
+// y el backend aplica el descuento del usuario.
+// datos: { correo, cliente, direccion, carrito }
+export const crearOrden = ({ correo, cliente, direccion, carrito }) =>
+  api('/boletas', {
+    metodo: 'POST',
+    cuerpo: { correo, cliente, direccion, lineas: carrito.map(({ id, cantidad }) => ({ productoId: id, cantidad })) },
+  })
 
-function guardar(lista) {
-  localStorage.setItem(CLAVE, JSON.stringify(lista))
-}
+// Con sesión: mis compras
+export const listarMisOrdenes = () => api('/boletas/mias')
 
-// ---------- CRUD ----------
+// Administrador y Vendedor
+export const listarOrdenes = () => api('/boletas')
+export const obtenerOrden = (numero) => api(`/boletas/${numero}`)
 
-// Crear: el número de orden es el mayor + 1 (empieza en 1001)
-export function crearOrden({ correo, cliente, direccion, lineas, totales, estado = 'Pagada' }) {
-  const lista = leer()
-  const numero = lista.length ? Math.max(...lista.map((o) => o.numero)) + 1 : PRIMER_NUMERO
-  const orden = {
-    numero,
-    fecha: new Date().toISOString(),
-    correo,
-    cliente,
-    direccion,
-    lineas: lineas.map(({ id, nombre, precio, cantidad }) => ({ id, nombre, precio, cantidad })),
-    subtotal: totales.subtotal,
-    descuento: totales.descuento,
-    motivo: totales.motivo,
-    total: totales.total,
-    regalo: totales.regalo,
-    estado,
-  }
-  guardar([...lista, orden])
-  return orden
-}
-
-// Leer
-export function listarOrdenes() {
-  return leer()
-}
-
-export function listarOrdenesDe(correo) {
-  return leer().filter((o) => o.correo.toLowerCase() === correo.toLowerCase())
-}
-
-export function obtenerOrden(numero) {
-  return leer().find((o) => o.numero === Number(numero))
-}
-
-// Actualizar (el administrador cambia el estado de la orden)
-export function cambiarEstadoOrden(numero, estado) {
-  const lista = leer().map((o) => (o.numero === Number(numero) ? { ...o, estado } : o))
-  guardar(lista)
-  return lista.find((o) => o.numero === Number(numero))
-}
-
-// Eliminar
-export function eliminarOrden(numero) {
-  guardar(leer().filter((o) => o.numero !== Number(numero)))
-}
-
-export function reiniciarOrdenes() {
-  localStorage.removeItem(CLAVE)
-}
+// Solo Administrador
+export const cambiarEstadoOrden = (numero, estado) =>
+  api(`/boletas/${numero}/estado`, { metodo: 'PATCH', cuerpo: { estado } })
+export const eliminarOrden = (numero) => api(`/boletas/${numero}`, { metodo: 'DELETE' })

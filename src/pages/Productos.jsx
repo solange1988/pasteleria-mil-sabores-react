@@ -1,14 +1,19 @@
 import { useState } from 'react'
 import { Container, Row, Col, Form } from 'react-bootstrap'
 import Catalogo from '../components/Catalogo.jsx'
-import { listarProductos, listarCategorias } from '../data/productos.js'
+import Cargando from '../components/Cargando.jsx'
+import useCarga from '../hooks/useCarga.js'
+import { listarProductos, categoriasDe } from '../data/productos.js'
 
 // Catálogo con buscador y filtro por categoría (estado local del componente)
 function Productos({ alAgregar }) {
   const [busqueda, setBusqueda] = useState('')
   const [categoria, setCategoria] = useState('')
 
-  const productos = listarProductos().filter(
+  // Se cargan una vez desde el backend; el filtro se hace en el navegador (es instantáneo)
+  const carga = useCarga(listarProductos, [])
+  const todos = carga.datos ?? []
+  const productos = todos.filter(
     (p) =>
       p.nombre.toLowerCase().includes(busqueda.trim().toLowerCase()) &&
       (categoria === '' || p.categoria === categoria),
@@ -35,14 +40,14 @@ function Productos({ alAgregar }) {
             onChange={(e) => setCategoria(e.target.value)}
           >
             <option value="">Todas las categorías</option>
-            {listarCategorias().map((c) => (
+            {categoriasDe(todos).map((c) => (
               <option key={c} value={c}>{c}</option>
             ))}
           </Form.Select>
         </Col>
       </Row>
 
-      <Catalogo productos={productos} alAgregar={alAgregar} />
+      <Cargando carga={carga}>{() => <Catalogo productos={productos} alAgregar={alAgregar} />}</Cargando>
     </Container>
   )
 }

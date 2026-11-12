@@ -1,97 +1,26 @@
-// "Base de datos" simulada de usuarios (se guarda en localStorage).
-// Cada usuario: { nombre, correo, contrasena, rol, fechaNacimiento, codigo, telefono, region, comuna }
-// OJO: en una aplicación real la contraseña NUNCA se guarda en texto plano ni en el navegador;
-// aquí es solo una simulación para poder probar el inicio de sesión sin backend.
+// Usuarios y autenticación: ahora los maneja el backend.
+// La contraseña viaja solo al iniciar sesión o registrarse; el backend la guarda cifrada (BCrypt)
+// y responde con tokens JWT. El navegador nunca guarda contraseñas.
+import { api } from '../api/cliente.js'
 
-const CLAVE = 'pms_usuarios_v1'
+export const ROLES = ['Administrador', 'Vendedor', 'Cliente']
 
-export const ROLES = ['Administrador', 'Cliente']
+// ---------- Públicos (sin token) ----------
+// Devuelven { token, tokenRenovacion, usuario }
+export const iniciarSesion = (correo, contrasena) =>
+  api('/auth/login', { metodo: 'POST', cuerpo: { correo: correo.trim(), contrasena }, conToken: false })
 
-// Cuenta que existe desde el inicio para poder entrar al panel de administración
-const ADMINISTRADOR = {
-  nombre: 'Administrador Pastelería',
-  correo: 'admin@duoc.cl',
-  contrasena: 'admin123',
-  rol: 'Administrador',
-  fechaNacimiento: '',
-  codigo: '',
-  telefono: '',
-  region: '',
-  comuna: '',
-}
+export const registrarUsuario = (datos) =>
+  api('/auth/registro', { metodo: 'POST', cuerpo: { ...datos, correo: datos.correo.trim() }, conToken: false })
 
-function leer() {
-  const guardado = localStorage.getItem(CLAVE)
-  return guardado ? JSON.parse(guardado) : [ADMINISTRADOR]
-}
+// ---------- Con sesión: el propio usuario ----------
+export const obtenerPerfil = () => api('/usuarios/perfil')
+export const actualizarPerfil = (datos) => api('/usuarios/perfil', { metodo: 'PUT', cuerpo: datos })
 
-function guardar(lista) {
-  localStorage.setItem(CLAVE, JSON.stringify(lista))
-}
-
-const mismoCorreo = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase()
-
-// Lo que sale de este archivo nunca incluye la contraseña
-function sinContrasena({ contrasena, ...resto }) { // eslint-disable-line no-unused-vars
-  return resto
-}
-
-// ---------- CRUD ----------
-
-// Leer
-export function listarUsuarios() {
-  return leer().map(sinContrasena)
-}
-
-export function obtenerUsuario(correo) {
-  const usuario = leer().find((u) => mismoCorreo(u.correo, correo))
-  return usuario ? sinContrasena(usuario) : undefined
-}
-
-export function existeCorreo(correo) {
-  return leer().some((u) => mismoCorreo(u.correo, correo))
-}
-
-// Crear: devuelve { ok: true, usuario } o { ok: false, mensaje }
-export function registrarUsuario(datos) {
-  if (existeCorreo(datos.correo)) return { ok: false, mensaje: 'Ese correo ya está registrado.' }
-  const nuevo = {
-    nombre: '', fechaNacimiento: '', codigo: '', telefono: '', region: '', comuna: '',
-    rol: 'Cliente',
-    ...datos,
-    correo: datos.correo.trim(),
-  }
-  guardar([...leer(), nuevo])
-  return { ok: true, usuario: sinContrasena(nuevo) }
-}
-
-// Actualizar: cambia solo los campos indicados (el correo identifica al usuario y no cambia)
-export function actualizarUsuario(correo, cambios) {
-  let actualizado
-  guardar(
-    leer().map((u) => {
-      if (!mismoCorreo(u.correo, correo)) return u
-      actualizado = { ...u, ...cambios, correo: u.correo }
-      return actualizado
-    }),
-  )
-  return actualizado ? sinContrasena(actualizado) : undefined
-}
-
-// Eliminar
-export function eliminarUsuario(correo) {
-  guardar(leer().filter((u) => !mismoCorreo(u.correo, correo)))
-}
-
-// Vuelve al estado inicial (solo la cuenta de administrador)
-export function reiniciarUsuarios() {
-  localStorage.removeItem(CLAVE)
-}
-
-// ---------- Inicio de sesión ----------
-
-// Devuelve el usuario si el correo y la contraseña coinciden; si no, null
-export function autenticar(correo, contrasena) {
-  const usuario = leer().find((u) => mismoCorreo(u.correo, correo) && u.contrasena === contrasena)
-  return usuario ? sinContrasena(usuario) : null
-}
+// ---------- Solo Administrador ----------
+export const listarUsuarios = () => api('/usuarios')
+export const crearUsuario = (datos) => api('/usuarios', { metodo: 'POST', cuerpo: datos })
+// Al editar se envían todos los datos; la contraseña vacía significa "no cambiarla"
+export const actualizarUsuario = (usuario, cambios) =>
+  api(`/usuarios/${usuario.id}`, { metodo: 'PUT', cuerpo: { ...usuario, ...cambios, contrasena: cambios.contrasena ?? '' } })
+export const eliminarUsuario = (id) => api(`/usuarios/${id}`, { metodo: 'DELETE' })

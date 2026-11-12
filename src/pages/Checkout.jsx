@@ -4,8 +4,7 @@ import CampoTexto from '../components/CampoTexto.jsx'
 import CamposRegion from '../components/CamposRegion.jsx'
 import TablaCarrito from '../components/TablaCarrito.jsx'
 import useFormulario from '../hooks/useFormulario.js'
-import { obtenerProducto, actualizarProducto } from '../data/productos.js'
-import { crearOrden } from '../data/ordenes.js'
+import { crearOrden, RECHAZADA } from '../data/ordenes.js'
 import { calcularTotales } from '../utils/descuentos.js'
 import formatearPrecio from '../utils/formato.js'
 import { validarNombre, validarCorreo, validarRequerido } from '../utils/validaciones.js'
@@ -17,11 +16,6 @@ const VALIDADORES = {
   calle: validarRequerido,
   region: validarRequerido,
   comuna: validarRequerido,
-}
-
-// Simulación del pago: falla si algún producto no tiene stock suficiente
-function productosSinStock(carrito) {
-  return carrito.filter((linea) => (obtenerProducto(linea.id)?.stock ?? 0) < linea.cantidad)
 }
 
 // Resumen de montos: subtotal, descuento (si corresponde) y total
@@ -52,35 +46,40 @@ function Checkout({ carrito, usuario, alConfirmar }) {
   )
   // resultado: null (llenando el formulario) | { exito, orden, lineas, faltantes }
   const [resultado, setResultado] = useState(null)
+  const [enviando, setEnviando] = useState(false)
+  const [error, setError] = useState('')
+  // Vista previa del total. El valor definitivo lo calcula el backend con los precios de la base de datos.
   const totales = calcularTotales(carrito, usuario)
 
-  function pagar(evento) {
+  // POST /api/v1/boletas. El backend valida el stock, aplica el descuento y descuenta el stock.
+  async function pagar(evento) {
     evento.preventDefault()
     if (!form.validarTodo()) return
 
     const { valores } = form
-    const datosOrden = {
-      correo: valores.correo.trim(),
-      cliente: `${valores.nombre} ${valores.apellidos}`.trim(),
-      direccion: `${valores.calle} ${valores.departamento}, ${valores.comuna}, ${valores.region}`,
-      lineas: carrito,
-      totales,
+    setEnviando(true)
+    setError('')
+    try {
+      const orden = await crearOrden({
+        correo: valores.correo.trim(),
+        cliente: `${valores.nombre} ${valores.apellidos}`.trim(),
+        direccion: [`${valores.calle} ${valores.departamento}`.trim(), valores.comuna, valores.region].join(', '),
+        carrito,
+      })
+      // Las líneas de la boleta traen el precio que cobró el backend; la imagen se toma del carrito
+      const lineas = orden.lineas.map((l) => ({ ...l, imagen: carrito.find((c) => c.id === l.id)?.imagen }))
+      if (orden.estado === RECHAZADA) {
+        // pago rechazado: el backend guardó la boleta como rechazada y NO descontó stock
+        setResultado({ exito: false, orden, lineas, faltantes: orden.faltantes })
+      } else {
+        setResultado({ exito: true, orden, lineas, faltantes: [] })
+        alConfirmar()
+      }
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setEnviando(false)
     }
-
-    const faltantes = productosSinStock(carrito)
-    if (faltantes.length > 0) {
-      // pago rechazado: se guarda la orden como rechazada y NO se descuenta stock
-      const orden = crearOrden({ ...datosOrden, estado: 'Pago rechazado' })
-      setResultado({ exito: false, orden, lineas: carrito, faltantes })
-      return
-    }
-    // pago correcto: descuenta stock, guarda la orden y vacía el carrito
-    carrito.forEach((linea) => {
-      actualizarProducto(linea.id, { stock: obtenerProducto(linea.id).stock - linea.cantidad })
-    })
-    const orden = crearOrden(datosOrden)
-    setResultado({ exito: true, orden, lineas: carrito, faltantes: [] })
-    alConfirmar()
   }
 
   if (resultado) {
@@ -94,7 +93,7 @@ function Checkout({ carrito, usuario, alConfirmar }) {
             <>
               <h1 className="fs-3 text-danger">✖ No se pudo realizar el pago. Nro #{orden.numero}</h1>
               <Alert variant="danger">
-                Stock insuficiente para: {resultado.faltantes.map((l) => l.nombre).join(', ')}
+                Stock insuficiente para: {resultado.faltantes.join(', ')}
               </Alert>
               <Button variant="success" className="mb-3" onClick={() => setResultado(null)}>
                 Volver a realizar el pago
@@ -131,6 +130,7 @@ function Checkout({ carrito, usuario, alConfirmar }) {
         <TablaCarrito carrito={carrito} />
         <ResumenTotales totales={totales} etiquetaTotal="Total" />
 
+        {error && <Alert variant="danger">{error}</Alert>}
         <Form noValidate onSubmit={pagar}>
           <h2 className="fs-4 mt-3">Información del cliente</h2>
           <Row>
@@ -154,7 +154,9 @@ function Checkout({ carrito, usuario, alConfirmar }) {
             placeholder="Ej: Entre calles, color del edificio, no tiene timbre."
           />
           <div className="text-end">
-            <Button type="submit" variant="success" size="lg">Pagar ahora {formatearPrecio(totales.total)}</Button>
+            <Button type="submit" variant="success" size="lg" disabled={enviando}>
+              {enviando ? 'Procesando pago...' : `Pagar ahora ${formatearPrecio(totales.total)}`}
+            </Button>
           </div>
         </Form>
       </Card>

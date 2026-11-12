@@ -1,13 +1,23 @@
 import { Container, Row, Col, Card, Alert } from 'react-bootstrap'
 import Catalogo from '../components/Catalogo.jsx'
-import { listarProductos, listarCategorias } from '../data/productos.js'
+import Cargando from '../components/Cargando.jsx'
+import useCarga from '../hooks/useCarga.js'
+import { listarProductos, categoriasDe } from '../data/productos.js'
 import { crearSlug } from '../utils/formato.js'
 
 // Sin "slug": muestra todas las categorías (#/categorias).
 // Con "slug": muestra los productos de esa categoría (#/categorias/tortas-cuadradas).
 function Categorias({ slug, alAgregar }) {
-  const productos = listarProductos()
-  const categorias = listarCategorias()
+  const carga = useCarga(listarProductos, [])
+  return (
+    <Cargando carga={carga}>
+      {(productos) => <VistaCategorias productos={productos} slug={slug} alAgregar={alAgregar} />}
+    </Cargando>
+  )
+}
+
+function VistaCategorias({ productos, slug, alAgregar }) {
+  const categorias = categoriasDe(productos)
 
   if (slug) {
     const categoria = categorias.find((c) => crearSlug(c) === slug)
