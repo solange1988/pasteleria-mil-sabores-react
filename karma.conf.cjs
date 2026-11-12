@@ -90,7 +90,7 @@ module.exports = function (config) {
     esbuild: {
       jsx: 'automatic',
       loader: { '.js': 'jsx' },
-      define: { 'process.env.NODE_ENV': '"test"' },
+      define: { 'process.env.NODE_ENV': '"test"', 'import.meta.env.VITE_API_URL': '"http://localhost:8080"' },
       target: 'es2020',
       singleBundle: false, // el único "bundle" es el archivo de entrada generado arriba
       plugins: conCobertura ? [pluginCobertura] : [],
