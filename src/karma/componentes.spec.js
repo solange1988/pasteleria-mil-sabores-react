@@ -7,7 +7,7 @@ import TarjetaProducto from '../components/TarjetaProducto.jsx'
 import Catalogo from '../components/Catalogo.jsx'
 import Carrito from '../pages/Carrito.jsx'
 import Login from '../pages/Login.jsx'
-import { registrarUsuario } from '../data/usuarios.js'
+import { simularApi, errorApi, respuestaLogin, CLIENTE } from '../test/apiFalsa.js'
 
 const MOUSSE = { id: 5, nombre: 'Mousse de Chocolate', categoria: 'Postres Individuales', precio: 5000, stock: 30, imagen: '/img/mousse-chocolate.jpg' }
 
@@ -61,9 +61,12 @@ describe('<Carrito />', () => {
 })
 
 describe('<Login />', () => {
+  // Backend falso: solo ana@duoc.cl / clave123 es correcto
   beforeEach(() => {
-    localStorage.clear()
-    registrarUsuario({ nombre: 'Ana Pérez', correo: 'ana@duoc.cl', contrasena: 'clave123' })
+    simularApi({
+      'POST /auth/login': ({ cuerpo }) =>
+        cuerpo.contrasena === 'clave123' ? respuestaLogin(CLIENTE) : errorApi(401, 'Correo o contraseña incorrectos'),
+    })
   })
 
   it('renderizado condicional: los mensajes de error solo aparecen cuando hay errores', async () => {
@@ -93,12 +96,14 @@ describe('<Login />', () => {
     await usuario.type(screen.getByLabelText('Correo'), 'ana@duoc.cl')
     await usuario.type(screen.getByLabelText('Contraseña'), 'otra123')
     await usuario.click(screen.getByRole('button', { name: 'Iniciar sesión' }))
+    expect(await screen.findByText('Correo o contraseña incorrectos.')).toBeTruthy()
     expect(alIniciarSesion).not.toHaveBeenCalled()
-    expect(screen.getByText('Correo o contraseña incorrectos.')).toBeTruthy()
 
     await usuario.clear(screen.getByLabelText('Contraseña'))
     await usuario.type(screen.getByLabelText('Contraseña'), 'clave123')
     await usuario.click(screen.getByRole('button', { name: 'Iniciar sesión' }))
-    expect(alIniciarSesion).toHaveBeenCalledWith('ana@duoc.cl')
+    await screen.findByRole('button', { name: 'Iniciar sesión' }) // espera a que termine la petición
+    await new Promise((listo) => setTimeout(listo, 0))
+    expect(alIniciarSesion).toHaveBeenCalledWith(respuestaLogin(CLIENTE))
   })
 })

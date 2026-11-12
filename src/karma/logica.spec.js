@@ -3,7 +3,7 @@
 import { agregarAlCarrito, calcularTotal, contarUnidades } from '../utils/carrito.js'
 import { descuentoDe, calcularTotales } from '../utils/descuentos.js'
 import { validarCorreoPermitido, validarContrasena } from '../utils/validaciones.js'
-import { crearProducto, listarProductos, reiniciarProductos } from '../data/productos.js'
+import { crearProducto } from '../data/productos.js'
 
 const MOUSSE = { id: 5, nombre: 'Mousse de Chocolate', precio: 5000, stock: 30, imagen: '/img/mousse-chocolate.jpg' }
 const TORTA = { id: 1, nombre: 'Torta Cuadrada de Chocolate', precio: 45000, stock: 10, imagen: '/img/torta-chocolate.jpg' }
@@ -60,21 +60,20 @@ describe('Validaciones', () => {
   })
 })
 
-describe('CRUD de productos (mock de localStorage con spyOn)', () => {
-  beforeEach(() => {
-    localStorage.clear()
-    reiniciarProductos()
-  })
-
-  it('crear un producto le asigna un id nuevo y lo guarda en localStorage', () => {
-    // spyOn espía setItem; and.callThrough() deja que igual guarde de verdad.
+describe('Crear producto contra la API (mock de fetch con spyOn)', () => {
+  it('envía POST /api/v1/productos con los datos y devuelve el producto con su id', async () => {
+    // spyOn reemplaza fetch por un doble que responde como el backend (201 Created).
     // Jasmine quita el espía solo al terminar la prueba.
-    spyOn(Storage.prototype, 'setItem').and.callThrough()
+    spyOn(window, 'fetch').and.resolveTo(
+      new Response(JSON.stringify({ id: 17, nombre: 'Kuchen de Nuez' }), { status: 201, headers: { 'Content-Type': 'application/json' } }),
+    )
 
-    const nuevo = crearProducto({ nombre: 'Kuchen de Nuez', categoria: 'Pastelería Tradicional', precio: 8000, stock: 5 })
+    const nuevo = await crearProducto({ nombre: 'Kuchen de Nuez', categoria: 'Pastelería Tradicional', precio: 8000, stock: 5 })
 
     expect(nuevo.id).toBe(17)
-    expect(Storage.prototype.setItem).toHaveBeenCalledWith('pms_productos_v2', jasmine.stringContaining('Kuchen de Nuez'))
-    expect(listarProductos().length).toBe(17)
+    const [url, opciones] = window.fetch.calls.argsFor(0)
+    expect(url).toBe('http://localhost:8080/api/v1/productos')
+    expect(opciones.method).toBe('POST')
+    expect(JSON.parse(opciones.body).nombre).toBe('Kuchen de Nuez')
   })
 })

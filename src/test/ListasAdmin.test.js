@@ -43,6 +43,22 @@ describe('<ListaOrdenes />', () => {
     expect(alCambiarEstado).toHaveBeenCalledWith(1001, 'Enviada')
   })
 
+  it('con conDetalle muestra las líneas, la dirección y los montos de la boleta', async () => {
+    const usuario = userEvent.setup()
+    const orden = ORDEN(1001, {
+      correo: 'ana@duoc.cl', direccion: 'Calle 1, Chillán', subtotal: 10000, descuento: 1000, motivo: 'Código FELICES50', total: 9000,
+      lineas: [{ id: 5, nombre: 'Mousse de Chocolate', precio: 5000, cantidad: 2 }],
+    })
+    render(<ListaOrdenes ordenes={[orden]} conDetalle />)
+
+    await usuario.click(screen.getByRole('button', { name: 'Ver detalle de la orden 1001' }))
+
+    expect(await screen.findByText('Boleta #1001')).toBeInTheDocument()
+    expect(screen.getByText('Mousse de Chocolate')).toBeInTheDocument()
+    expect(screen.getByText(/Calle 1, Chillán/)).toBeInTheDocument()
+    expect(screen.getByText(/Código FELICES50:/)).toBeInTheDocument()
+  })
+
   it('una orden rechazada se muestra distinta (etiqueta roja)', () => {
     render(<ListaOrdenes ordenes={[ORDEN(1001, { estado: 'Pago rechazado' })]} />)
     expect(screen.getByText('Pago rechazado')).toHaveClass('bg-danger')
@@ -51,8 +67,8 @@ describe('<ListaOrdenes />', () => {
 
 describe('<ListaUsuarios />', () => {
   const USUARIOS = [
-    { nombre: 'Admin', correo: 'admin@duoc.cl', rol: 'Administrador' },
-    { nombre: 'Ana', correo: 'ana@duoc.cl', rol: 'Cliente' },
+    { id: 1, nombre: 'Admin', correo: 'admin@duoc.cl', rol: 'Administrador' },
+    { id: 3, nombre: 'Ana', correo: 'ana@duoc.cl', rol: 'Cliente' },
   ]
 
   it('sin usuarios muestra un aviso', () => {
@@ -61,33 +77,38 @@ describe('<ListaUsuarios />', () => {
   })
 
   it('lista a cada usuario con su rol', () => {
-    render(<ListaUsuarios usuarios={USUARIOS} correoActual="admin@duoc.cl" />)
+    render(<ListaUsuarios usuarios={USUARIOS} idActual={1} />)
     expect(screen.getByText('ana@duoc.cl')).toBeInTheDocument()
     expect(screen.getByLabelText('Rol de ana@duoc.cl')).toHaveValue('Cliente')
   })
 
-  it('cambiar el rol avisa con el correo y el nuevo rol', async () => {
+  it('se puede asignar el rol Vendedor', () => {
+    render(<ListaUsuarios usuarios={USUARIOS} idActual={1} />)
+    expect(screen.getAllByRole('option', { name: 'Vendedor' })).toHaveSize(2)
+  })
+
+  it('cambiar el rol avisa con el usuario y el nuevo rol', async () => {
     const usuario = userEvent.setup()
     const alCambiarRol = jasmine.createSpy()
-    render(<ListaUsuarios usuarios={USUARIOS} correoActual="admin@duoc.cl" alCambiarRol={alCambiarRol} />)
+    render(<ListaUsuarios usuarios={USUARIOS} idActual={1} alCambiarRol={alCambiarRol} />)
 
     await usuario.selectOptions(screen.getByLabelText('Rol de ana@duoc.cl'), 'Administrador')
 
-    expect(alCambiarRol).toHaveBeenCalledWith('ana@duoc.cl', 'Administrador')
+    expect(alCambiarRol).toHaveBeenCalledWith(USUARIOS[1], 'Administrador')
   })
 
-  it('eliminar avisa con el correo', async () => {
+  it('eliminar avisa con el usuario', async () => {
     const usuario = userEvent.setup()
     const alEliminar = jasmine.createSpy()
-    render(<ListaUsuarios usuarios={USUARIOS} correoActual="admin@duoc.cl" alEliminar={alEliminar} />)
+    render(<ListaUsuarios usuarios={USUARIOS} idActual={1} alEliminar={alEliminar} />)
 
     await usuario.click(screen.getByRole('button', { name: 'Eliminar a ana@duoc.cl' }))
 
-    expect(alEliminar).toHaveBeenCalledWith('ana@duoc.cl')
+    expect(alEliminar).toHaveBeenCalledWith(USUARIOS[1])
   })
 
   it('el administrador con sesión no puede cambiarse el rol ni eliminarse a sí mismo', () => {
-    render(<ListaUsuarios usuarios={USUARIOS} correoActual="admin@duoc.cl" />)
+    render(<ListaUsuarios usuarios={USUARIOS} idActual={1} />)
     expect(screen.getByLabelText('Rol de admin@duoc.cl')).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Eliminar a admin@duoc.cl' })).toBeDisabled()
   })

@@ -1,78 +1,92 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Perfil from '../pages/Perfil.jsx'
-import { registrarUsuario, obtenerUsuario } from '../data/usuarios.js'
-import { crearOrden } from '../data/ordenes.js'
+import { simularApi, errorApi, boletaPrueba, conSesion, CLIENTE } from './apiFalsa.js'
 
-const TOTALES = { subtotal: 5000, descuento: 0, motivo: '', total: 5000, regalo: '' }
+const ana = (extra = {}) => ({ ...CLIENTE, ...extra })
 
-function crearAna(extra = {}) {
-  registrarUsuario({ nombre: 'Ana Pérez', correo: 'ana@duoc.cl', contrasena: 'clave123', ...extra })
-  return obtenerUsuario('ana@duoc.cl')
+function API_PERFIL(compras = []) {
+  return simularApi({
+    'GET /boletas/mias': compras,
+    'PUT /usuarios/perfil': ({ cuerpo }) =>
+      cuerpo.codigo && cuerpo.codigo !== 'FELICES50' ? errorApi(400, 'El código promocional no es válido') : { ...CLIENTE, ...cuerpo },
+  })
 }
 
-describe('<Perfil />', () => {
-  it('sin sesión pide iniciar sesión', () => {
-    render(<Perfil usuario={null} alGuardar={() => {}} />)
-    expect(screen.getByText('Debes iniciar sesión para ver tu perfil.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Iniciar sesión' })).toHaveAttribute('href', '#/login')
-  })
+describe('<Perfil /> (GET /boletas/mias y PUT /usuarios/perfil)', () => {
+  beforeEach(() => conSesion(CLIENTE))
 
-  it('con sesión muestra los datos del usuario ya cargados en el formulario', () => {
-    render(<Perfil usuario={crearAna({ telefono: '+56911112222' })} alGuardar={() => {}} />)
+  it('muestra los datos del usuario ya cargados en el formulario', () => {
+    API_PERFIL()
+    render(<Perfil usuario={ana({ telefono: '+56911112222' })} alGuardar={() => {}} />)
     expect(screen.getByText('ana@duoc.cl')).toBeInTheDocument()
     expect(screen.getByLabelText('Nombre completo')).toHaveValue('Ana Pérez')
     expect(screen.getByLabelText('Teléfono (opcional)')).toHaveValue('+56911112222')
   })
 
-  it('guarda los cambios, avisa al padre y confirma', async () => {
+  it('guarda los cambios en el backend, entrega el usuario actualizado y confirma', async () => {
+    const llamadas = API_PERFIL()
     const usuario = userEvent.setup()
     const alGuardar = jasmine.createSpy()
-    render(<Perfil usuario={crearAna()} alGuardar={alGuardar} />)
+    render(<Perfil usuario={ana()} alGuardar={alGuardar} />)
 
     await usuario.clear(screen.getByLabelText('Nombre completo'))
     await usuario.type(screen.getByLabelText('Nombre completo'), 'Ana Gómez')
     await usuario.click(screen.getByRole('button', { name: 'Guardar cambios' }))
 
-    expect(obtenerUsuario('ana@duoc.cl').nombre).toBe('Ana Gómez')
-    expect(alGuardar).toHaveBeenCalledTimes(1)
-    expect(screen.getByText('Tus datos se actualizaron correctamente.')).toBeInTheDocument()
+    expect(await screen.findByText('Tus datos se actualizaron correctamente.')).toBeInTheDocument()
+    expect(alGuardar).toHaveBeenCalledWith(jasmine.objectContaining({ nombre: 'Ana Gómez' }))
+    expect(llamadas.find((l) => l.metodo === 'PUT').cuerpo.nombre).toBe('Ana Gómez')
   })
 
-  it('un nombre inválido no se guarda y muestra el error', async () => {
+  it('un nombre inválido no se envía y muestra el error', async () => {
+    const llamadas = API_PERFIL()
     const usuario = userEvent.setup()
     const alGuardar = jasmine.createSpy()
-    render(<Perfil usuario={crearAna()} alGuardar={alGuardar} />)
+    render(<Perfil usuario={ana()} alGuardar={alGuardar} />)
 
     await usuario.clear(screen.getByLabelText('Nombre completo'))
     await usuario.click(screen.getByRole('button', { name: 'Guardar cambios' }))
 
     expect(screen.getAllByRole('alert').length).toBeGreaterThan(0)
     expect(alGuardar).not.toHaveBeenCalled()
-    expect(obtenerUsuario('ana@duoc.cl').nombre).toBe('Ana Pérez')
+    expect(llamadas.some((l) => l.metodo === 'PUT')).toBeFalse()
   })
 
   it('sin descuentos asociados lo informa', () => {
-    render(<Perfil usuario={crearAna()} alGuardar={() => {}} />)
+    API_PERFIL()
+    render(<Perfil usuario={ana()} alGuardar={() => {}} />)
     expect(screen.getByText('Por ahora no tienes descuentos asociados a tu cuenta.')).toBeInTheDocument()
   })
 
   it('con el código FELICES50 muestra el 10% de descuento', () => {
-    render(<Perfil usuario={crearAna({ codigo: 'FELICES50' })} alGuardar={() => {}} />)
+    API_PERFIL()
+    render(<Perfil usuario={ana({ codigo: 'FELICES50' })} alGuardar={() => {}} />)
     expect(screen.getByText(/Tienes 10% de descuento/)).toBeInTheDocument()
   })
 
-  it('el historial de compras muestra solo las órdenes de este cliente', () => {
-    const ana = crearAna()
-    crearOrden({ correo: 'ana@duoc.cl', cliente: 'Ana Pérez', direccion: 'x', lineas: [], totales: TOTALES })
-    crearOrden({ correo: 'otro@gmail.com', cliente: 'Otro', direccion: 'x', lineas: [], totales: TOTALES })
-    render(<Perfil usuario={ana} alGuardar={() => {}} />)
-    expect(screen.getByText('#1001')).toBeInTheDocument()
-    expect(screen.queryByText('#1002')).toBeNull()
+  it('el historial muestra las compras que devuelve GET /boletas/mias', async () => {
+    const llamadas = API_PERFIL([boletaPrueba({ numero: 1001 }), boletaPrueba({ numero: 1003 })])
+    render(<Perfil usuario={ana()} alGuardar={() => {}} />)
+    expect(await screen.findByText('#1001')).toBeInTheDocument()
+    expect(screen.getByText('#1003')).toBeInTheDocument()
+    expect(llamadas[0]).toEqual(jasmine.objectContaining({ ruta: '/boletas/mias', autorizacion: 'Bearer token-acceso' }))
   })
 
-  it('sin compras el historial muestra el aviso de lista vacía', () => {
-    render(<Perfil usuario={crearAna()} alGuardar={() => {}} />)
-    expect(screen.getByText('No hay órdenes registradas.')).toBeInTheDocument()
+  it('sin compras el historial muestra el aviso de lista vacía', async () => {
+    API_PERFIL()
+    render(<Perfil usuario={ana()} alGuardar={() => {}} />)
+    expect(await screen.findByText('No hay órdenes registradas.')).toBeInTheDocument()
+  })
+
+  it('si el backend rechaza los datos muestra su mensaje', async () => {
+    API_PERFIL()
+    const usuario = userEvent.setup()
+    render(<Perfil usuario={ana()} alGuardar={() => {}} />)
+    await screen.findByText('No hay órdenes registradas.')
+    // El backend falso solo acepta "FELICES50" en mayúsculas: así simulamos que rechaza algo que el navegador aceptó
+    await usuario.type(screen.getByLabelText('Código promocional (opcional)'), 'felices50')
+    await usuario.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    expect(await screen.findByText('El código promocional no es válido')).toBeInTheDocument()
   })
 })

@@ -11,108 +11,155 @@ import BlogDetalle from '../pages/BlogDetalle.jsx'
 import Contacto from '../pages/Contacto.jsx'
 import Carrito from '../pages/Carrito.jsx'
 import PiePagina from '../components/PiePagina.jsx'
-import { actualizarProducto, listarProductos, listarOfertas } from '../data/productos.js'
+import { simularApi, productosPrueba, ofertasDe, errorApi } from './apiFalsa.js'
+
+// Los productos ahora vienen del backend: cada prueba simula la respuesta de la API.
+const API_CATALOGO = () => {
+  const productos = productosPrueba()
+  return simularApi({
+    'GET /productos': productos,
+    'GET /productos/ofertas': ofertasDe(productos),
+    'GET /productos/5': productos[4],
+    'GET /productos/2': productos[1],
+    'GET /productos/9999': errorApi(404, 'No existe el producto 9999'),
+  })
+}
 
 describe('<Ofertas />', () => {
-  it('muestra solo los productos en oferta, con su porcentaje', () => {
+  it('pide las ofertas al backend y muestra cada una con su porcentaje', async () => {
+    const llamadas = API_CATALOGO()
     render(<Ofertas alAgregar={() => {}} />)
     expect(screen.getByRole('heading', { level: 1, name: 'Ofertas' })).toBeInTheDocument()
-    expect(screen.getByText('5 productos con precio especial')).toBeInTheDocument()
+    expect(await screen.findByText('5 productos con precio especial')).toBeInTheDocument()
     expect(screen.getAllByText(/^-\d+%$/).length).toBe(5)
+    expect(llamadas[0]).toEqual(jasmine.objectContaining({ metodo: 'GET', ruta: '/productos/ofertas' }))
+  })
+
+  it('mientras carga muestra el indicador de carga', () => {
+    API_CATALOGO()
+    render(<Ofertas alAgregar={() => {}} />)
+    expect(screen.getByText('Cargando...')).toBeInTheDocument()
   })
 
   it('agregar una oferta al carrito llama a alAgregar con ese producto', async () => {
+    API_CATALOGO()
     const usuario = userEvent.setup()
     const alAgregar = jasmine.createSpy()
     render(<Ofertas alAgregar={alAgregar} />)
 
-    await usuario.click(screen.getAllByRole('button', { name: 'Añadir al carrito' })[0])
+    await usuario.click((await screen.findAllByRole('button', { name: 'Añadir al carrito' }))[0])
 
     expect(alAgregar).toHaveBeenCalledTimes(1)
     expect(alAgregar.calls.argsFor(0)[0].precioOferta).toBeGreaterThan(0)
   })
 
-  it('si no queda ninguna oferta avisa que por ahora no hay', () => {
-    listarOfertas().forEach((p) => actualizarProducto(p.id, { precioOferta: 0 }))
+  it('si no queda ninguna oferta avisa que por ahora no hay', async () => {
+    simularApi({ 'GET /productos/ofertas': [] })
     render(<Ofertas alAgregar={() => {}} />)
-    expect(screen.getByText('Por ahora no hay productos en oferta.')).toBeInTheDocument()
+    expect(await screen.findByText('Por ahora no hay productos en oferta.')).toBeInTheDocument()
     expect(screen.getByText('Vuelve pronto: publicaremos nuevas ofertas.')).toBeInTheDocument()
+  })
+
+  it('si el backend no responde muestra el error y permite reintentar', async () => {
+    simularApi({ 'GET /productos/ofertas': errorApi(500, 'Error interno') })
+    render(<Ofertas alAgregar={() => {}} />)
+    expect(await screen.findByText(/Error interno/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument()
   })
 })
 
 describe('<Categorias />', () => {
-  it('sin slug lista las 8 categorías con su cantidad de productos y enlace', () => {
+  it('sin slug lista las 8 categorías con su cantidad de productos y enlace', async () => {
+    API_CATALOGO()
     render(<Categorias alAgregar={() => {}} />)
-    expect(screen.getByRole('heading', { level: 1, name: 'Categorías' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Categorías' })).toBeInTheDocument()
     expect(screen.getAllByText(/productos$/).length).toBe(8)
     expect(screen.getAllByRole('link', { name: 'Tortas Cuadradas' })[0]).toHaveAttribute('href', '#/categorias/tortas-cuadradas')
   })
 
-  it('con slug muestra solo los productos de esa categoría', () => {
+  it('con slug muestra solo los productos de esa categoría', async () => {
+    API_CATALOGO()
     render(<Categorias slug="tortas-cuadradas" alAgregar={() => {}} />)
-    expect(screen.getByRole('heading', { level: 1, name: 'Tortas Cuadradas' })).toBeInTheDocument()
-    const esperados = listarProductos().filter((p) => p.categoria === 'Tortas Cuadradas').length
+    expect(await screen.findByRole('heading', { level: 1, name: 'Tortas Cuadradas' })).toBeInTheDocument()
+    const esperados = productosPrueba().filter((p) => p.categoria === 'Tortas Cuadradas').length
     expect(screen.getAllByRole('button', { name: 'Añadir al carrito' }).length).toBe(esperados)
     expect(screen.getByRole('link', { name: /Todas las categorías/ })).toHaveAttribute('href', '#/categorias')
   })
 
-  it('con un slug que no existe avisa que la categoría no existe', () => {
+  it('con un slug que no existe avisa que la categoría no existe', async () => {
+    API_CATALOGO()
     render(<Categorias slug="inventada" alAgregar={() => {}} />)
-    expect(screen.getByText('Esa categoría no existe.')).toBeInTheDocument()
+    expect(await screen.findByText('Esa categoría no existe.')).toBeInTheDocument()
   })
 })
 
 describe('<DetalleProducto />', () => {
-  it('muestra nombre, precio y permite agregar al carrito', async () => {
+  it('pide el producto por su id y permite agregarlo al carrito', async () => {
+    const llamadas = API_CATALOGO()
     const usuario = userEvent.setup()
     const alAgregar = jasmine.createSpy()
     render(<DetalleProducto id="5" alAgregar={alAgregar} />)
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Mousse de Chocolate' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Mousse de Chocolate' })).toBeInTheDocument()
+    expect(llamadas[0].ruta).toBe('/productos/5')
     await usuario.click(screen.getByRole('button', { name: 'Añadir al carrito' }))
 
     expect(alAgregar).toHaveBeenCalledTimes(1)
   })
 
-  it('un producto en oferta muestra el precio normal tachado y el porcentaje', () => {
-    const { id } = listarOfertas()[0]
-    render(<DetalleProducto id={String(id)} alAgregar={() => {}} />)
-    expect(screen.getByText(/^-\d+%$/)).toBeInTheDocument()
+  it('un producto en oferta muestra el precio normal tachado y el porcentaje', async () => {
+    API_CATALOGO()
+    render(<DetalleProducto id="2" alAgregar={() => {}} />)
+    expect(await screen.findByText(/^-\d+%$/)).toBeInTheDocument()
     expect(document.querySelector('del')).not.toBeNull()
   })
 
-  it('un producto sin stock tiene el botón desactivado y dice "Sin stock"', () => {
-    actualizarProducto(5, { stock: 0 })
+  it('un producto sin stock tiene el botón desactivado y dice "Sin stock"', async () => {
+    simularApi({ 'GET /productos/5': { ...productosPrueba()[4], stock: 0 } })
     render(<DetalleProducto id="5" alAgregar={() => {}} />)
-    expect(screen.getByRole('button', { name: 'Añadir al carrito' })).toBeDisabled()
+    expect(await screen.findByRole('button', { name: 'Añadir al carrito' })).toBeDisabled()
     expect(screen.getByText('Sin stock')).toBeInTheDocument()
   })
 
-  it('un id que no existe muestra "El producto no existe."', () => {
+  it('si el backend responde 404 muestra "El producto no existe."', async () => {
+    API_CATALOGO()
     render(<DetalleProducto id="9999" alAgregar={() => {}} />)
-    expect(screen.getByText('El producto no existe.')).toBeInTheDocument()
+    expect(await screen.findByText('El producto no existe.')).toBeInTheDocument()
   })
 })
 
 describe('<Productos /> (búsqueda y filtro)', () => {
-  it('muestra todo el catálogo al inicio', () => {
+  it('muestra todo el catálogo que entrega el backend', async () => {
+    API_CATALOGO()
     render(<Productos alAgregar={() => {}} />)
-    expect(screen.getAllByRole('button', { name: 'Añadir al carrito' }).length).toBe(listarProductos().length)
+    expect((await screen.findAllByRole('button', { name: 'Añadir al carrito' })).length).toBe(16)
   })
 
   it('buscar por nombre deja solo los que coinciden', async () => {
+    API_CATALOGO()
     const usuario = userEvent.setup()
     render(<Productos alAgregar={() => {}} />)
+    await screen.findAllByRole('button', { name: 'Añadir al carrito' })
     await usuario.type(screen.getByRole('searchbox'), 'mousse')
     expect(screen.getAllByRole('button', { name: 'Añadir al carrito' }).length).toBe(1)
+  })
+
+  it('filtrar por categoría deja solo los de esa categoría', async () => {
+    API_CATALOGO()
+    const usuario = userEvent.setup()
+    render(<Productos alAgregar={() => {}} />)
+    await screen.findAllByRole('button', { name: 'Añadir al carrito' })
+    await usuario.selectOptions(screen.getByLabelText('Filtrar por categoría'), 'Veganos')
+    expect(screen.getAllByRole('button', { name: 'Añadir al carrito' }).length).toBe(2)
   })
 })
 
 describe('páginas informativas', () => {
-  it('<Inicio /> muestra la portada y productos destacados', () => {
+  it('<Inicio /> muestra la portada y los 4 productos destacados', async () => {
+    API_CATALOGO()
     render(<Inicio alAgregar={() => {}} />)
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: 'Añadir al carrito' }).length).toBeGreaterThan(0)
+    expect((await screen.findAllByRole('button', { name: 'Añadir al carrito' })).length).toBe(4)
   })
 
   it('<Nosotros /> muestra la misión y la visión', () => {
