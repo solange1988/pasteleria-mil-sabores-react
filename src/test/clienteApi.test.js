@@ -1,4 +1,4 @@
-import { api, URL_API, ErrorApi } from '../api/cliente.js'
+import { api, URL_API, ErrorApi, clienteHttp } from '../api/cliente.js'
 import { leerSesion, EVENTO_SESION_EXPIRADA } from '../auth/sesion.js'
 import { simularApi, simularSinConexion, responder, errorApi, conSesion, CLIENTE } from './apiFalsa.js'
 
@@ -7,10 +7,15 @@ describe('api/cliente.js (comunicación con el backend)', () => {
     expect(URL_API).toBe('http://localhost:8080/api/v1')
   })
 
+  it('usa una instancia de axios configurada con esa URL base', () => {
+    expect(clienteHttp.defaults.baseURL).toBe('http://localhost:8080/api/v1')
+    expect(typeof clienteHttp.interceptors.request.use).toBe('function')
+  })
+
   it('GET: devuelve el JSON de la respuesta', async () => {
-    simularApi({ 'GET /productos': [{ id: 1 }] })
+    const llamadas = simularApi({ 'GET /productos': [{ id: 1 }] })
     expect(await api('/productos')).toEqual([{ id: 1 }])
-    expect(window.fetch).toHaveBeenCalledWith('http://localhost:8080/api/v1/productos', jasmine.any(Object))
+    expect(llamadas[0]).toEqual(jasmine.objectContaining({ metodo: 'GET', ruta: '/productos' }))
   })
 
   it('POST: envía el cuerpo como JSON con su Content-Type', async () => {
@@ -18,7 +23,7 @@ describe('api/cliente.js (comunicación con el backend)', () => {
     const creada = await api('/categorias', { metodo: 'POST', cuerpo: { nombre: 'Kuchen' } })
     expect(creada.id).toBe(9)
     expect(llamadas[0].cuerpo).toEqual({ nombre: 'Kuchen' })
-    expect(window.fetch.calls.argsFor(0)[1].headers['Content-Type']).toBe('application/json')
+    expect(llamadas[0].tipoContenido).toContain('application/json')
   })
 
   it('sin sesión NO envía el encabezado Authorization', async () => {

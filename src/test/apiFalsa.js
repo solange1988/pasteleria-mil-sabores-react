@@ -1,6 +1,7 @@
-// Backend falso para las pruebas: reemplaza window.fetch con un espía de Jasmine.
+// Backend falso para las pruebas: reemplaza el "adaptador" de axios (la pieza que realmente
+// envía la petición por la red) por una función que responde como el backend.
 // Así las pruebas no necesitan Spring Boot ni MySQL, pero recorren el código real
-// (componente -> data/*.js -> api/cliente.js -> fetch).
+// (componente -> data/*.js -> api/cliente.js -> axios con sus interceptores -> adaptador).
 //
 // Uso:
 //   const llamadas = simularApi({
@@ -10,39 +11,59 @@
 //   })
 //   ...
 //   expect(llamadas[0]).toEqual(jasmine.objectContaining({ metodo: 'GET', ruta: '/productos' }))
-import { URL_API } from '../api/cliente.js'
+import { AxiosError } from 'axios'
+import { clienteHttp } from '../api/cliente.js'
 import { guardarSesion } from '../auth/sesion.js'
 
 const MARCA = Symbol('respuesta')
+const ADAPTADOR_REAL = clienteHttp.defaults.adapter
 
 export const responder = (estado, cuerpo = null) => ({ [MARCA]: true, estado, cuerpo })
 export const errorApi = (estado, mensaje) => responder(estado, { error: mensaje })
 
+// Cambia el adaptador de axios solo durante la prueba actual (después se restaura el real)
+function usarAdaptador(adaptador) {
+  const espia = jasmine.createSpy('adaptadorAxios').and.callFake(adaptador)
+  clienteHttp.defaults.adapter = espia
+  return espia
+}
+afterEach(() => { clienteHttp.defaults.adapter = ADAPTADOR_REAL })
+
 export function simularApi(rutas = {}) {
   const llamadas = []
-  spyOn(window, 'fetch').and.callFake(async (url, opciones = {}) => {
+  usarAdaptador(async (config) => {
     const llamada = {
-      metodo: opciones.method ?? 'GET',
-      ruta: String(url).replace(URL_API, ''),
-      cuerpo: opciones.body ? JSON.parse(opciones.body) : undefined,
-      autorizacion: opciones.headers?.Authorization,
+      metodo: config.method.toUpperCase(),
+      ruta: config.url,
+      cuerpo: config.data ? JSON.parse(config.data) : undefined,
+      autorizacion: config.headers.get('Authorization') ?? undefined,
+      tipoContenido: config.headers.get('Content-Type') ?? undefined,
     }
     llamadas.push(llamada)
     let r = rutas[`${llamada.metodo} ${llamada.ruta}`]
     if (typeof r === 'function') r = await r(llamada)
     if (r === undefined) r = errorApi(404, `Ruta no simulada: ${llamada.metodo} ${llamada.ruta}`)
     if (!r?.[MARCA]) r = responder(200, r)
-    return new Response(r.estado === 204 ? null : JSON.stringify(r.cuerpo), {
+    const respuesta = {
+      data: r.estado === 204 ? '' : JSON.stringify(r.cuerpo),
       status: r.estado,
-      headers: { 'Content-Type': 'application/json' },
-    })
+      statusText: '',
+      headers: { 'content-type': 'application/json' },
+      config,
+      request: {},
+    }
+    // Igual que el adaptador real: los códigos 4xx/5xx terminan en error
+    if (config.validateStatus(r.estado)) return respuesta
+    throw new AxiosError(`Request failed with status code ${r.estado}`, AxiosError.ERR_BAD_REQUEST, config, {}, respuesta)
   })
   return llamadas
 }
 
-// Simula que el backend está apagado
+// Simula que el backend está apagado (error de red: no hay respuesta)
 export function simularSinConexion() {
-  spyOn(window, 'fetch').and.rejectWith(new TypeError('Failed to fetch'))
+  usarAdaptador(async (config) => {
+    throw new AxiosError('Network Error', AxiosError.ERR_NETWORK, config, {})
+  })
 }
 
 // ---------- Datos de prueba ----------

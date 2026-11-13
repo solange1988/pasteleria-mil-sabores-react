@@ -4,6 +4,7 @@ import { agregarAlCarrito, calcularTotal, contarUnidades } from '../utils/carrit
 import { descuentoDe, calcularTotales } from '../utils/descuentos.js'
 import { validarCorreoPermitido, validarContrasena } from '../utils/validaciones.js'
 import { crearProducto } from '../data/productos.js'
+import { clienteHttp } from '../api/cliente.js'
 
 const MOUSSE = { id: 5, nombre: 'Mousse de Chocolate', precio: 5000, stock: 30, imagen: '/img/mousse-chocolate.jpg' }
 const TORTA = { id: 1, nombre: 'Torta Cuadrada de Chocolate', precio: 45000, stock: 10, imagen: '/img/torta-chocolate.jpg' }
@@ -60,20 +61,18 @@ describe('Validaciones', () => {
   })
 })
 
-describe('Crear producto contra la API (mock de fetch con spyOn)', () => {
+describe('Crear producto contra la API (mock de axios con spyOn)', () => {
   it('envía POST /api/v1/productos con los datos y devuelve el producto con su id', async () => {
-    // spyOn reemplaza fetch por un doble que responde como el backend (201 Created).
-    // Jasmine quita el espía solo al terminar la prueba.
-    spyOn(window, 'fetch').and.resolveTo(
-      new Response(JSON.stringify({ id: 17, nombre: 'Kuchen de Nuez' }), { status: 201, headers: { 'Content-Type': 'application/json' } }),
-    )
+    // spyOn reemplaza el método request de la instancia de axios por un doble que responde
+    // como el backend (201 Created). Jasmine quita el espía solo al terminar la prueba.
+    spyOn(clienteHttp, 'request').and.resolveTo({ status: 201, data: { id: 17, nombre: 'Kuchen de Nuez' } })
 
     const nuevo = await crearProducto({ nombre: 'Kuchen de Nuez', categoria: 'Pastelería Tradicional', precio: 8000, stock: 5 })
 
     expect(nuevo.id).toBe(17)
-    const [url, opciones] = window.fetch.calls.argsFor(0)
-    expect(url).toBe('http://localhost:8080/api/v1/productos')
-    expect(opciones.method).toBe('POST')
-    expect(JSON.parse(opciones.body).nombre).toBe('Kuchen de Nuez')
+    const [config] = clienteHttp.request.calls.argsFor(0)
+    expect(clienteHttp.defaults.baseURL + config.url).toBe('http://localhost:8080/api/v1/productos')
+    expect(config.method).toBe('POST')
+    expect(config.data.nombre).toBe('Kuchen de Nuez')
   })
 })

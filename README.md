@@ -1,10 +1,10 @@
 # Pastelería Mil Sabores · Frontend (React)
 
-Tienda en línea hecha con **React + Vite + React-Bootstrap**, conectada a un backend **Spring Boot** mediante una API REST.
+Tienda en línea hecha con **React + Vite + React-Bootstrap**, conectada a un backend **Spring Boot** mediante una API REST consumida con **axios**.
 Proyecto de DSY1104 Desarrollo Full Stack II (Evaluaciones Parciales 2 y 3).
 
 - Backend: https://github.com/solange1988/pasteleria-mil-sabores-backend
-- Pruebas: **Jasmine + Karma** con **Testing Library** (222 pruebas, cobertura sobre 88 %)
+- Pruebas: **Jasmine + Karma** con **Testing Library** (223 pruebas, cobertura sobre 87 %)
 
 ---
 
@@ -46,7 +46,7 @@ Página (pages/*.jsx)
 data/productos.js · data/usuarios.js · data/ordenes.js     ← una función por endpoint
    │  llaman a
    ▼
-api/cliente.js  ── fetch ──►  http://localhost:8080/api/v1/...  ──►  Spring Boot ──► MySQL
+api/cliente.js  ── axios ──►  http://localhost:8080/api/v1/...  ──►  Spring Boot ──► MySQL
    │  agrega "Authorization: Bearer <token>", convierte errores, renueva el token
    ▼
 auth/sesion.js (localStorage)     auth/permisos.js (qué ve cada rol)
@@ -83,7 +83,7 @@ El frontend solo decide qué se **muestra**; la seguridad real está en el backe
 
 ```
 src/
-  api/cliente.js        Cliente HTTP (fetch) hacia el backend
+  api/cliente.js        Cliente HTTP (axios + interceptores) hacia el backend
   auth/                 sesion.js y permisos.js
   data/                 productos.js, usuarios.js, ordenes.js (API) · blogs.js y regiones.js (datos fijos)
   hooks/                useFormulario.js, useCarga.js
@@ -93,12 +93,12 @@ src/
   pages/                Inicio, Productos, DetalleProducto, Categorias, Ofertas, Carrito, Checkout,
                         Registro, Login, Perfil, Admin, Nosotros, Blogs, BlogDetalle, Contacto
   utils/                carrito, descuentos (vista previa), formato, reportes, validaciones
-  test/ y karma/        Pruebas (test/apiFalsa.js simula el backend reemplazando fetch)
+  test/ y karma/        Pruebas (test/apiFalsa.js simula el backend con un adaptador falso de axios)
 ```
 
 ## 5. Pruebas
 
-`npm run test:ejecutar` corre 222 pruebas. Las que tocan la API usan `src/test/apiFalsa.js`, que reemplaza `window.fetch` con un espía de Jasmine que responde como el backend. Así se prueba el camino completo (página → data → cliente → fetch) sin levantar Spring Boot:
+`npm run test:ejecutar` corre 223 pruebas. Las que tocan la API usan `src/test/apiFalsa.js`, que reemplaza el adaptador de axios (la pieza que envía la petición por la red) con un espía de Jasmine que responde como el backend. Así se prueba el camino completo (página → data → cliente → axios con sus interceptores) sin levantar Spring Boot:
 
 - Cliente de la API: URL versionada, token en el encabezado, errores, renovación del token y sesión expirada.
 - Sesión y permisos: persistencia en localStorage, roles y página inicial de cada rol.
