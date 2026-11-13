@@ -9,6 +9,7 @@ describe('api/cliente.js (comunicación con el backend)', () => {
 
   it('usa una instancia de axios configurada con esa URL base', () => {
     expect(clienteHttp.defaults.baseURL).toBe('http://localhost:8080/api/v1')
+    expect(clienteHttp.defaults.timeout).toBe(8000) // no queda cargando para siempre
     expect(typeof clienteHttp.interceptors.request.use).toBe('function')
   })
 

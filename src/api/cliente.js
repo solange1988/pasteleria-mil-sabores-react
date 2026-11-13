@@ -1,6 +1,7 @@
 // Cliente HTTP para hablar con el backend (Spring Boot) usando AXIOS.
 // Todas las llamadas a la API pasan por aquí, así la lógica común está en un solo lugar:
-//  1. Una instancia de axios (clienteHttp) con la URL base: http://localhost:8080/api/v1
+//  1. Una instancia de axios (clienteHttp) con la URL base http://localhost:8080/api/v1 y un
+//     tiempo límite de 8 segundos (timeout).
 //  2. axios envía el cuerpo como JSON y convierte la respuesta JSON en objeto automáticamente.
 //  3. Interceptor de PETICIÓN: si hay sesión, agrega "Authorization: Bearer <token>".
 //  4. Interceptor de RESPUESTA: si el backend responde 401 porque el token venció, pide uno nuevo
@@ -13,9 +14,12 @@ import { leerSesion, guardarSesion, borrarSesion, EVENTO_SESION_EXPIRADA } from 
 const SERVIDOR = import.meta.env.VITE_API_URL || 'http://localhost:8080'
 export const URL_API = `${SERVIDOR}/api/v1`
 
-// Instancia de axios con la configuración común a todas las peticiones
+// Instancia de axios con la configuración común a todas las peticiones.
+// timeout: si el servidor no contesta en 8 segundos, la petición se cancela y
+// se muestra el error de conexión, en vez de quedar "Cargando…" para siempre.
 export const clienteHttp = axios.create({
   baseURL: URL_API,
+  timeout: 8000,
   headers: { Accept: 'application/json' },
 })
 
