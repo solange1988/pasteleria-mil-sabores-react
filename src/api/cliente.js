@@ -11,7 +11,11 @@
 import axios from 'axios'
 import { leerSesion, guardarSesion, borrarSesion, EVENTO_SESION_EXPIRADA } from '../auth/sesion.js'
 
-const SERVIDOR = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+// Dirección del backend:
+//  - npm run dev   → no hay variable: http://localhost:8080 (Spring Boot en tu computador)
+//  - npm run build → .env.production deja VITE_API_URL vacío: se usa la MISMA dirección de la
+//    página (/api/v1). En el servidor EC2, Nginx recibe /api y se lo pasa a Spring Boot.
+const SERVIDOR = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 export const URL_API = `${SERVIDOR}/api/v1`
 
 // Instancia de axios con la configuración común a todas las peticiones.
