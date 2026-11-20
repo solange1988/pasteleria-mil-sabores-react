@@ -16,5 +16,5 @@ export function puede(usuario, permiso) {
 
 // A dónde llevar a cada usuario después de iniciar sesión
 export function paginaInicial(usuario) {
-  return puede(usuario, 'panel') ? '#/admin' : '#/'
+  return puede(usuario, 'panel') ? '/admin' : '/'
 }

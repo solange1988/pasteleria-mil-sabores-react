@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Row, Col, Card, Form, Button, Table, Alert } from 'react-bootstrap'
 import CampoTexto from './CampoTexto.jsx'
 import Cargando from './Cargando.jsx'
@@ -112,7 +113,7 @@ function AdminProductos({ editable = true }) {
                       <Button size="sm" variant="outline-danger" onClick={() => eliminar(p.id)}>Eliminar</Button>
                     </>
                   ) : (
-                    <Button size="sm" variant="outline-primary" href={`#/producto/${p.id}`}>Ver detalle</Button>
+                    <Button size="sm" variant="outline-primary" as={Link} to={`/producto/${p.id}`}>Ver detalle</Button>
                   )}
                 </td>
               </tr>

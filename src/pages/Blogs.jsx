@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { Container, Row, Col, Button } from 'react-bootstrap'
 import blogs from '../data/blogs.js'
 
@@ -11,7 +12,7 @@ function Blogs() {
           <Col md={{ span: 6, order: i % 2 === 0 ? 1 : 2 }}>
             <h2>{blog.titulo}</h2>
             <p className="lh-lg">{blog.resumen}</p>
-            <Button href={`#/blog/${blog.id}`} variant="chocolate">Ver caso completo</Button>
+            <Button as={Link} to={`/blog/${blog.id}`} variant="chocolate">Ver caso completo</Button>
           </Col>
           <Col md={{ span: 6, order: i % 2 === 0 ? 2 : 1 }}>
             <img src={blog.imagen} alt={blog.titulo} className="img-portada" />

@@ -1,13 +1,15 @@
 // Pruebas de componentes React con Jasmine, ejecutadas por Karma en Google Chrome.
 // Cubren lo que pide el anexo: renderizado, renderizado condicional, props, estado y eventos.
 // Testing Library dibuja el componente en el navegador; los espías son de Jasmine (jasmine.createSpy).
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import TarjetaProducto from '../components/TarjetaProducto.jsx'
 import Catalogo from '../components/Catalogo.jsx'
 import Carrito from '../pages/Carrito.jsx'
 import Login from '../pages/Login.jsx'
+import { leerSesion } from '../auth/sesion.js'
 import { simularApi, errorApi, respuestaLogin, CLIENTE } from '../test/apiFalsa.js'
+import { renderizarConRouter as render, renderizarPagina, ponerCarrito, leerCarritoGuardado } from '../test/rutas.js'
 
 const MOUSSE = { id: 5, nombre: 'Mousse de Chocolate', categoria: 'Postres Individuales', precio: 5000, stock: 30, imagen: '/img/mousse-chocolate.jpg' }
 
@@ -48,15 +50,15 @@ describe('<Catalogo />', () => {
 })
 
 describe('<Carrito />', () => {
-  it('evento: el botón + pide la cantidad siguiente al componente padre', async () => {
+  it('evento y contexto: el botón + suma una unidad en el carrito compartido', async () => {
     const usuario = userEvent.setup()
-    const alCambiarCantidad = jasmine.createSpy('alCambiarCantidad')
-    const carrito = [{ id: 5, nombre: 'Mousse de Chocolate', precio: 5000, imagen: '/img/mousse-chocolate.jpg', cantidad: 2 }]
-    render(<Carrito carrito={carrito} alCambiarCantidad={alCambiarCantidad} alQuitar={jasmine.createSpy()} alVaciar={jasmine.createSpy()} />)
+    ponerCarrito([{ id: 5, nombre: 'Mousse de Chocolate', precio: 5000, imagen: '/img/mousse-chocolate.jpg', cantidad: 2 }])
+    renderizarPagina(<Carrito />, { ruta: '/carrito' })
 
     await usuario.click(screen.getByRole('button', { name: 'Sumar Mousse de Chocolate' }))
 
-    expect(alCambiarCantidad).toHaveBeenCalledWith(5, 3)
+    expect(leerCarritoGuardado()[0].cantidad).toBe(3)
+    expect(screen.getByText('3')).toBeInTheDocument()
   })
 })
 
@@ -71,7 +73,7 @@ describe('<Login />', () => {
 
   it('renderizado condicional: los mensajes de error solo aparecen cuando hay errores', async () => {
     const usuario = userEvent.setup()
-    render(<Login alIniciarSesion={jasmine.createSpy('alIniciarSesion')} />)
+    renderizarPagina(<Login />, { ruta: '/login' })
     expect(screen.queryByRole('alert')).toBeNull()
 
     await usuario.click(screen.getByRole('button', { name: 'Iniciar sesión' }))
@@ -81,29 +83,28 @@ describe('<Login />', () => {
 
   it('estado: el valor del campo cambia cuando el usuario escribe', async () => {
     const usuario = userEvent.setup()
-    render(<Login alIniciarSesion={jasmine.createSpy('alIniciarSesion')} />)
+    renderizarPagina(<Login />, { ruta: '/login' })
 
     await usuario.type(screen.getByLabelText('Correo'), 'ana@duoc.cl')
 
     expect(screen.getByLabelText('Correo').value).toBe('ana@duoc.cl')
   })
 
-  it('evento: con datos válidos llama a alIniciarSesion; con contraseña incorrecta, no', async () => {
+  it('evento: con datos válidos inicia la sesión (contexto); con contraseña incorrecta, no', async () => {
     const usuario = userEvent.setup()
-    const alIniciarSesion = jasmine.createSpy('alIniciarSesion')
-    render(<Login alIniciarSesion={alIniciarSesion} />)
+    renderizarPagina(<Login />, { ruta: '/login' })
 
     await usuario.type(screen.getByLabelText('Correo'), 'ana@duoc.cl')
     await usuario.type(screen.getByLabelText('Contraseña'), 'otra123')
     await usuario.click(screen.getByRole('button', { name: 'Iniciar sesión' }))
     expect(await screen.findByText('Correo o contraseña incorrectos.')).toBeTruthy()
-    expect(alIniciarSesion).not.toHaveBeenCalled()
+    expect(leerSesion()).toBeNull()
 
     await usuario.clear(screen.getByLabelText('Contraseña'))
     await usuario.type(screen.getByLabelText('Contraseña'), 'clave123')
     await usuario.click(screen.getByRole('button', { name: 'Iniciar sesión' }))
     await screen.findByRole('button', { name: 'Iniciar sesión' }) // espera a que termine la petición
     await new Promise((listo) => setTimeout(listo, 0))
-    expect(alIniciarSesion).toHaveBeenCalledWith(respuestaLogin(CLIENTE))
+    expect(leerSesion()).toEqual(respuestaLogin(CLIENTE))
   })
 })

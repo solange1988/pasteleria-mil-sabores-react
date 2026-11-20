@@ -3,7 +3,7 @@ function formatearPrecio(valor) {
   return valor.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })
 }
 
-// "Pastelería Tradicional" -> "pasteleria-tradicional" (sirve para armar la URL #/categorias/...)
+// "Pastelería Tradicional" -> "pasteleria-tradicional" (sirve para armar la URL /categorias/...)
 export function crearSlug(texto) {
   return texto
     .normalize('NFD')

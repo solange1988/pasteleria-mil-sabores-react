@@ -1,13 +1,14 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Encabezado from '../components/Encabezado.jsx'
 import TarjetaProducto from '../components/TarjetaProducto.jsx'
+import { renderizarConRouter as render } from './rutas.js'
 
 describe('<Encabezado />', () => {
   it('sin sesión muestra Iniciar sesión y Registrarse', () => {
     render(<Encabezado cantidadCarrito={0} usuario={null} alCerrarSesion={() => {}} />)
-    expect(screen.getByRole('button', { name: 'Iniciar sesión' })).toHaveAttribute('href', '#/login')
-    expect(screen.getByRole('button', { name: 'Registrarse' })).toHaveAttribute('href', '#/registro')
+    expect(screen.getByText('Iniciar sesión')).toHaveAttribute('href', '/login')
+    expect(screen.getByText('Registrarse')).toHaveAttribute('href', '/registro')
     expect(screen.queryByRole('button', { name: 'Cerrar sesión' })).toBeNull()
   })
 
@@ -18,8 +19,8 @@ describe('<Encabezado />', () => {
 
   it('tiene los enlaces de las vistas nuevas (Categorías y Ofertas)', () => {
     render(<Encabezado cantidadCarrito={0} usuario={null} alCerrarSesion={() => {}} />)
-    expect(screen.getByRole('link', { name: 'Categorías' })).toHaveAttribute('href', '#/categorias')
-    expect(screen.getByRole('link', { name: 'Ofertas' })).toHaveAttribute('href', '#/ofertas')
+    expect(screen.getByRole('link', { name: 'Categorías' })).toHaveAttribute('href', '/categorias')
+    expect(screen.getByRole('link', { name: 'Ofertas' })).toHaveAttribute('href', '/ofertas')
   })
 
   it('un cliente ve su nombre y NO ve el enlace Admin', () => {
@@ -30,7 +31,7 @@ describe('<Encabezado />', () => {
 
   it('un administrador SÍ ve el enlace Admin', () => {
     render(<Encabezado cantidadCarrito={0} usuario={{ nombre: 'Jefa', correo: 'j@duoc.cl', rol: 'Administrador' }} alCerrarSesion={() => {}} />)
-    expect(screen.getByRole('link', { name: 'Admin' })).toHaveAttribute('href', '#/admin')
+    expect(screen.getByRole('link', { name: 'Admin' })).toHaveAttribute('href', '/admin')
   })
 
   it('Cerrar sesión avisa al padre', async () => {

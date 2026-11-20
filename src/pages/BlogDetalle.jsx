@@ -1,12 +1,14 @@
+import { Link, useParams } from 'react-router-dom'
 import { Container, Alert } from 'react-bootstrap'
 import blogs from '../data/blogs.js'
 
-function BlogDetalle({ id }) {
+function BlogDetalle() {
+  const { id } = useParams()
   const blog = blogs.find((b) => b.id === Number(id))
 
   return (
     <Container className="py-4" style={{ maxWidth: 820 }}>
-      <a href="#/blogs">&larr; Volver a Blogs</a>
+      <Link to="/blogs">&larr; Volver a Blogs</Link>
       {blog ? (
         <article className="mt-3">
           <h1>{blog.titulo}</h1>

@@ -10,6 +10,7 @@ import { actualizarPerfil } from '../data/usuarios.js'
 import { listarMisOrdenes } from '../data/ordenes.js'
 import { descuentoDe } from '../utils/descuentos.js'
 import { validarNombreCompleto, validarFechaNacimiento, validarCodigoPromocional } from '../utils/validaciones.js'
+import { useSesion } from '../context/SesionContext.jsx'
 
 const VALIDADORES = {
   nombre: validarNombreCompleto,
@@ -18,9 +19,10 @@ const VALIDADORES = {
 }
 
 // Perfil del usuario: actualizar sus datos, ver su descuento e historial de compras.
-// Props: usuario (con sesión iniciada; App protege esta página con RutaProtegida)
-//        alGuardar(usuarioActualizado): avisa a App para actualizar la sesión
-function Perfil({ usuario, alGuardar }) {
+// El usuario viene del contexto de sesión (App protege esta página con RutaProtegida).
+// Al guardar, actualizarUsuario actualiza la sesión (encabezado, descuentos, etc.).
+function Perfil() {
+  const { usuario, actualizarUsuario } = useSesion()
   const form = useFormulario(
     {
       nombre: usuario?.nombre ?? '',
@@ -44,7 +46,7 @@ function Perfil({ usuario, alGuardar }) {
     setError('')
     if (!form.validarTodo()) return
     try {
-      alGuardar(await actualizarPerfil(form.valores))
+      actualizarUsuario(await actualizarPerfil(form.valores))
       setGuardado(true)
     } catch (e) {
       setError(e.message)

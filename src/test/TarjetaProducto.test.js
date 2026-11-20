@@ -1,6 +1,7 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import TarjetaProducto from '../components/TarjetaProducto.jsx'
+import { renderizarConRouter as render } from './rutas.js'
 
 const MOUSSE = { id: 5, nombre: 'Mousse de Chocolate', categoria: 'Postres Individuales', precio: 5000, stock: 30, imagen: '/img/mousse-chocolate.jpg' }
 

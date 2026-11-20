@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { Card, Button, Badge } from 'react-bootstrap'
 import formatearPrecio, { porcentajeOferta } from '../utils/formato.js'
 import { precioVigente } from '../utils/carrito.js'
@@ -15,13 +16,13 @@ function TarjetaProducto({ producto, alAgregar }) {
       {oferta > 0 && (
         <Badge bg="danger" className="position-absolute top-0 end-0 m-2 fs-6">-{oferta}%</Badge>
       )}
-      <a href={`#/producto/${id}`}>
+      <Link to={`/producto/${id}`}>
         <Card.Img variant="top" src={imagen} alt={nombre} className="img-producto" />
-      </a>
+      </Link>
       <Card.Body className="d-flex flex-column text-center">
         <Badge bg="secondary" className="align-self-center mb-2">{categoria}</Badge>
         <Card.Title as="h3" className="fs-6 fw-bold">
-          <a href={`#/producto/${id}`} className="text-reset text-decoration-none">{nombre}</a>
+          <Link to={`/producto/${id}`} className="text-reset text-decoration-none">{nombre}</Link>
         </Card.Title>
         <Card.Text className="fs-5 mb-1">
           {oferta > 0 && <del className="text-secondary fs-6 me-2">{formatearPrecio(precio)}</del>}

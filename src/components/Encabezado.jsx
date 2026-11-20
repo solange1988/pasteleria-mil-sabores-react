@@ -1,3 +1,4 @@
+import { Link, NavLink } from 'react-router-dom'
 import { Navbar, Nav, Container, Button, Badge } from 'react-bootstrap'
 import { puede } from '../auth/permisos.js'
 
@@ -9,29 +10,29 @@ function Encabezado({ cantidadCarrito, usuario, alCerrarSesion }) {
   return (
     <Navbar expand="lg" className="barra-rosa shadow-sm" sticky="top">
       <Container>
-        <Navbar.Brand href="#/" className="d-flex align-items-center gap-2 fw-bold">
+        <Navbar.Brand as={Link} to="/" className="d-flex align-items-center gap-2 fw-bold">
           <img src="/img/logo.png" alt="Logo Pastelería Mil Sabores" width="50" />
           Pastelería Mil Sabores
         </Navbar.Brand>
         <Navbar.Toggle aria-controls="menu-principal" />
         <Navbar.Collapse id="menu-principal">
           <Nav className="me-auto">
-            <Nav.Link href="#/">Home</Nav.Link>
-            <Nav.Link href="#/productos">Productos</Nav.Link>
-            <Nav.Link href="#/categorias">Categorías</Nav.Link>
-            <Nav.Link href="#/ofertas">Ofertas</Nav.Link>
-            <Nav.Link href="#/nosotros">Nosotros</Nav.Link>
-            <Nav.Link href="#/blogs">Blogs</Nav.Link>
-            <Nav.Link href="#/contacto">Contacto</Nav.Link>
+            <Nav.Link as={NavLink} to="/" end>Home</Nav.Link>
+            <Nav.Link as={NavLink} to="/productos">Productos</Nav.Link>
+            <Nav.Link as={NavLink} to="/categorias">Categorías</Nav.Link>
+            <Nav.Link as={NavLink} to="/ofertas">Ofertas</Nav.Link>
+            <Nav.Link as={NavLink} to="/nosotros">Nosotros</Nav.Link>
+            <Nav.Link as={NavLink} to="/blogs">Blogs</Nav.Link>
+            <Nav.Link as={NavLink} to="/contacto">Contacto</Nav.Link>
             {/* El enlace al panel solo aparece para los roles que pueden entrar (Administrador y Vendedor) */}
             {puede(usuario, 'panel') && (
-              <Nav.Link href="#/admin">{usuario.rol === 'Vendedor' ? 'Panel vendedor' : 'Admin'}</Nav.Link>
+              <Nav.Link as={NavLink} to="/admin">{usuario.rol === 'Vendedor' ? 'Panel vendedor' : 'Admin'}</Nav.Link>
             )}
           </Nav>
           <div className="d-flex flex-wrap align-items-center gap-2 py-2 py-lg-0">
             {usuario ? (
               <>
-                <a href="#/perfil" className="small text-reset">Hola, {usuario.nombre}</a>
+                <Link to="/perfil" className="small text-reset">Hola, {usuario.nombre}</Link>
                 <Badge bg="secondary">{usuario.rol}</Badge>
                 <Button variant="outline-dark" size="sm" onClick={alCerrarSesion}>
                   Cerrar sesión
@@ -39,11 +40,11 @@ function Encabezado({ cantidadCarrito, usuario, alCerrarSesion }) {
               </>
             ) : (
               <>
-                <Button href="#/login" variant="outline-dark" size="sm">Iniciar sesión</Button>
-                <Button href="#/registro" variant="dark" size="sm">Registrarse</Button>
+                <Button as={Link} to="/login" variant="outline-dark" size="sm">Iniciar sesión</Button>
+                <Button as={Link} to="/registro" variant="dark" size="sm">Registrarse</Button>
               </>
             )}
-            <Button href="#/carrito" variant="chocolate" size="sm">
+            <Button as={Link} to="/carrito" variant="chocolate" size="sm">
               🛒 Carrito <Badge bg="light" text="dark">{cantidadCarrito}</Badge>
             </Button>
           </div>

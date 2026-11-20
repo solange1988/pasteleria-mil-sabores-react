@@ -1,7 +1,8 @@
-import { render, screen, within, waitFor } from '@testing-library/react'
+import { screen, within, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import AdminProductos from '../components/AdminProductos.jsx'
 import { simularApi, responder, errorApi, productosPrueba, conSesion, ADMIN } from './apiFalsa.js'
+import { renderizarConRouter as render } from './rutas.js'
 
 // Backend falso con estado: los productos creados/editados/eliminados se reflejan al recargar la lista
 function backendProductos() {

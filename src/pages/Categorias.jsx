@@ -1,17 +1,21 @@
+import { Link, useParams } from 'react-router-dom'
 import { Container, Row, Col, Card, Alert } from 'react-bootstrap'
 import Catalogo from '../components/Catalogo.jsx'
 import Cargando from '../components/Cargando.jsx'
 import useCarga from '../hooks/useCarga.js'
 import { listarProductos, categoriasDe } from '../data/productos.js'
 import { crearSlug } from '../utils/formato.js'
+import { useCarrito } from '../context/CarritoContext.jsx'
 
-// Sin "slug": muestra todas las categorías (#/categorias).
-// Con "slug": muestra los productos de esa categoría (#/categorias/tortas-cuadradas).
-function Categorias({ slug, alAgregar }) {
+// Ruta /categorias: muestra todas las categorías.
+// Ruta /categorias/:slug: muestra los productos de esa categoría (/categorias/tortas-cuadradas).
+function Categorias() {
+  const { slug } = useParams()
+  const { agregar } = useCarrito()
   const carga = useCarga(listarProductos, [])
   return (
     <Cargando carga={carga}>
-      {(productos) => <VistaCategorias productos={productos} slug={slug} alAgregar={alAgregar} />}
+      {(productos) => <VistaCategorias productos={productos} slug={slug} alAgregar={agregar} />}
     </Cargando>
   )
 }
@@ -23,7 +27,7 @@ function VistaCategorias({ productos, slug, alAgregar }) {
     const categoria = categorias.find((c) => crearSlug(c) === slug)
     return (
       <Container className="py-4">
-        <a href="#/categorias">&larr; Todas las categorías</a>
+        <Link to="/categorias">&larr; Todas las categorías</Link>
         {categoria ? (
           <>
             <h1 className="text-center my-3">{categoria}</h1>
@@ -45,12 +49,12 @@ function VistaCategorias({ productos, slug, alAgregar }) {
           return (
             <Col key={categoria}>
               <Card className="h-100 shadow-sm border-0 text-center">
-                <a href={`#/categorias/${crearSlug(categoria)}`}>
+                <Link to={`/categorias/${crearSlug(categoria)}`}>
                   <Card.Img variant="top" src={deLaCategoria[0].imagen} alt={categoria} className="img-producto" />
-                </a>
+                </Link>
                 <Card.Body>
                   <Card.Title as="h2" className="fs-5">
-                    <a href={`#/categorias/${crearSlug(categoria)}`} className="text-reset text-decoration-none">{categoria}</a>
+                    <Link to={`/categorias/${crearSlug(categoria)}`} className="text-reset text-decoration-none">{categoria}</Link>
                   </Card.Title>
                   <Card.Text className="text-secondary">{deLaCategoria.length} productos</Card.Text>
                 </Card.Body>

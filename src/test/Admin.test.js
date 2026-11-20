@@ -1,10 +1,16 @@
-import { render, screen, within, waitFor } from '@testing-library/react'
+import { screen, within, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Admin from '../pages/Admin.jsx'
+import { leerSesion } from '../auth/sesion.js'
 import { simularApi, responder, productosPrueba, boletaPrueba, conSesion, ADMIN, VENDEDOR, CLIENTE } from './apiFalsa.js'
+import { renderizarPagina } from './rutas.js'
+
+// El panel lee el usuario del contexto de sesión (la sesión se guarda en cada beforeEach)
+const abrirPanel = () => renderizarPagina(<Admin />, { ruta: '/admin' })
 
 const API_PANEL = () =>
   simularApi({
+    'GET /usuarios/perfil': () => leerSesion().usuario,
     'GET /productos': productosPrueba(),
     'GET /productos/criticos': productosPrueba().filter((p) => p.stock <= 5),
     'GET /boletas': [boletaPrueba()],
@@ -18,7 +24,7 @@ describe('<Admin /> como Administrador (acceso total)', () => {
 
   it('ve el panel con las 5 pestañas', async () => {
     API_PANEL()
-    render(<Admin usuario={ADMIN} />)
+    abrirPanel()
     expect(screen.getByRole('heading', { name: 'Panel de administración' })).toBeInTheDocument()
     ;['Productos', 'Stock crítico', 'Órdenes', 'Usuarios', 'Reportes'].forEach((t) => {
       expect(screen.getByRole('tab', { name: t })).toBeInTheDocument()
@@ -28,7 +34,7 @@ describe('<Admin /> como Administrador (acceso total)', () => {
 
   it('la pestaña Usuarios carga la lista desde el backend', async () => {
     API_PANEL()
-    render(<Admin usuario={ADMIN} />)
+    abrirPanel()
     await userEvent.setup().click(screen.getByRole('tab', { name: 'Usuarios' }))
     expect(await screen.findByText('vendedor@duoc.cl')).toBeInTheDocument()
   })
@@ -36,7 +42,7 @@ describe('<Admin /> como Administrador (acceso total)', () => {
   it('puede crear un usuario Vendedor', async () => {
     const llamadas = API_PANEL()
     const u = userEvent.setup()
-    render(<Admin usuario={ADMIN} />)
+    abrirPanel()
     await u.click(screen.getByRole('tab', { name: 'Usuarios' }))
     await screen.findByText('vendedor@duoc.cl')
     // se busca dentro de la pestaña Usuarios (la de Productos puede seguir en pantalla durante la animación)
@@ -52,7 +58,7 @@ describe('<Admin /> como Administrador (acceso total)', () => {
   it('Stock crítico, Órdenes y Reportes cargan sus datos', async () => {
     API_PANEL()
     const u = userEvent.setup()
-    render(<Admin usuario={ADMIN} />)
+    abrirPanel()
     await u.click(screen.getByRole('tab', { name: 'Stock crítico' }))
     expect(await screen.findByText('Cheesecake Sin Azúcar')).toBeInTheDocument()
     await u.click(screen.getByRole('tab', { name: 'Órdenes' }))
@@ -64,7 +70,7 @@ describe('<Admin /> como Administrador (acceso total)', () => {
   it('cambiar el estado de una orden llama a PATCH /boletas/{numero}/estado', async () => {
     const llamadas = API_PANEL()
     const u = userEvent.setup()
-    render(<Admin usuario={ADMIN} />)
+    abrirPanel()
     await u.click(screen.getByRole('tab', { name: 'Órdenes' }))
     await u.selectOptions(await screen.findByLabelText('Estado de la orden 1001'), 'Enviada')
     await waitFor(() => expect(llamadas.some((l) => l.metodo === 'PATCH' && l.ruta === '/boletas/1001/estado')).toBeTrue())
@@ -77,16 +83,16 @@ describe('<Admin /> como Vendedor (solo productos y órdenes)', () => {
 
   it('solo ve las pestañas Productos y Órdenes', () => {
     API_PANEL()
-    render(<Admin usuario={VENDEDOR} />)
+    abrirPanel()
     expect(screen.getByRole('heading', { name: 'Panel de vendedor' })).toBeInTheDocument()
     expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Productos', 'Órdenes'])
   })
 
   it('los productos son de solo lectura: sin formulario, sin Editar ni Eliminar, con enlace al detalle', async () => {
     API_PANEL()
-    render(<Admin usuario={VENDEDOR} />)
+    abrirPanel()
     const fila = (await screen.findByText('Mousse de Chocolate')).closest('tr')
-    expect(within(fila).getByRole('button', { name: 'Ver detalle' })).toHaveAttribute('href', '#/producto/5')
+    expect(within(fila).getByText('Ver detalle')).toHaveAttribute('href', '/producto/5')
     expect(screen.queryByRole('button', { name: 'Editar' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Eliminar' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Crear producto' })).toBeNull()
@@ -95,7 +101,7 @@ describe('<Admin /> como Vendedor (solo productos y órdenes)', () => {
   it('ve la lista de órdenes y su detalle, pero no puede cambiar el estado', async () => {
     API_PANEL()
     const u = userEvent.setup()
-    render(<Admin usuario={VENDEDOR} />)
+    abrirPanel()
     await u.click(screen.getByRole('tab', { name: 'Órdenes' }))
     expect(await screen.findByText('#1001')).toBeInTheDocument()
     expect(screen.queryByRole('combobox')).toBeNull()

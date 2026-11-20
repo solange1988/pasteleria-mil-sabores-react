@@ -3,16 +3,18 @@ import Catalogo from '../components/Catalogo.jsx'
 import Cargando from '../components/Cargando.jsx'
 import useCarga from '../hooks/useCarga.js'
 import { listarOfertas } from '../data/productos.js'
+import { useCarrito } from '../context/CarritoContext.jsx'
 
 // Vista que muestra todos los productos que están en oferta
 // GET /api/v1/productos/ofertas
-function Ofertas({ alAgregar }) {
+function Ofertas() {
+  const { agregar } = useCarrito()
   const carga = useCarga(listarOfertas, [])
 
   return (
     <Container className="py-4">
       <h1 className="text-center mb-2">Ofertas</h1>
-      <Cargando carga={carga}>{(ofertas) => <ListaOfertas ofertas={ofertas} alAgregar={alAgregar} />}</Cargando>
+      <Cargando carga={carga}>{(ofertas) => <ListaOfertas ofertas={ofertas} alAgregar={agregar} />}</Cargando>
     </Container>
   )
 }

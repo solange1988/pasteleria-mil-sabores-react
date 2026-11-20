@@ -1,12 +1,15 @@
+import { Link } from 'react-router-dom'
 import { Container, Row, Col, Button, Ratio } from 'react-bootstrap'
 import Catalogo from '../components/Catalogo.jsx'
 import Cargando from '../components/Cargando.jsx'
 import useCarga from '../hooks/useCarga.js'
 import { listarProductos } from '../data/productos.js'
+import { useCarrito } from '../context/CarritoContext.jsx'
 
 const IDS_DESTACADOS = [1, 4, 5, 10]
 
-function Inicio({ alAgregar }) {
+function Inicio() {
+  const { agregar } = useCarrito()
   // Los productos vienen del backend: GET /api/v1/productos
   const carga = useCarga(listarProductos, [])
 
@@ -21,7 +24,7 @@ function Inicio({ alAgregar }) {
             mundo en 1995, hoy renovamos nuestra tienda online para ofrecerte una experiencia
             de compra moderna, cercana y llena de tradición.
           </p>
-          <Button href="#/productos" variant="chocolate" size="lg">Ver productos</Button>
+          <Button as={Link} to="/productos" variant="chocolate" size="lg">Ver productos</Button>
         </Col>
         <Col lg={6}>
           <img src="/img/hero-pasteleria.jpg" alt="Pastelería Mil Sabores" className="img-portada" />
@@ -31,7 +34,7 @@ function Inicio({ alAgregar }) {
       <h2 className="text-center mb-4">Productos destacados</h2>
       <Cargando carga={carga}>
         {(productos) => (
-          <Catalogo productos={productos.filter((p) => IDS_DESTACADOS.includes(p.id))} alAgregar={alAgregar} />
+          <Catalogo productos={productos.filter((p) => IDS_DESTACADOS.includes(p.id))} alAgregar={agregar} />
         )}
       </Cargando>
 

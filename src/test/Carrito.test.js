@@ -1,17 +1,18 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Carrito from '../pages/Carrito.jsx'
 import Encabezado from '../components/Encabezado.jsx'
+import { renderizarPagina, renderizarConRouter, ponerCarrito, leerCarritoGuardado } from './rutas.js'
 
 const CARRITO = [
   { id: 5, nombre: 'Mousse de Chocolate', precio: 5000, imagen: '/img/logo.png', cantidad: 2 },
   { id: 1, nombre: 'Torta Cuadrada de Chocolate', precio: 45000, imagen: '/img/logo.png', cantidad: 1 },
 ]
 
-function renderCarrito(carrito, props = {}) {
-  return render(
-    <Carrito carrito={carrito} alCambiarCantidad={jasmine.createSpy()} alQuitar={jasmine.createSpy()} alVaciar={jasmine.createSpy()} {...props} />,
-  )
+// El carrito ahora vive en un contexto: se deja guardado y la página lo lee de ahí
+function renderCarrito(carrito) {
+  ponerCarrito(carrito)
+  return renderizarPagina(<Carrito />, { ruta: '/carrito' })
 }
 
 describe('<Carrito />', () => {
@@ -28,34 +29,33 @@ describe('<Carrito />', () => {
     expect(screen.getByText('Total: $55.000')).toBeInTheDocument()
   })
 
-  it('el botón + pide la cantidad siguiente; Eliminar y Vaciar avisan al padre', async () => {
+  it('el botón + suma una unidad, Eliminar quita la línea y Vaciar deja el carrito vacío', async () => {
     const usuario = userEvent.setup()
-    const alCambiarCantidad = jasmine.createSpy()
-    const alQuitar = jasmine.createSpy()
-    const alVaciar = jasmine.createSpy()
-    renderCarrito(CARRITO, { alCambiarCantidad, alQuitar, alVaciar })
+    renderCarrito(CARRITO)
 
     await usuario.click(screen.getByRole('button', { name: 'Sumar Mousse de Chocolate' }))
-    await usuario.click(screen.getAllByRole('button', { name: 'Eliminar' })[1])
-    await usuario.click(screen.getByRole('button', { name: 'Vaciar carrito' }))
+    expect(leerCarritoGuardado().find((l) => l.id === 5).cantidad).toBe(3)
 
-    expect(alCambiarCantidad).toHaveBeenCalledWith(5, 3)
-    expect(alQuitar).toHaveBeenCalledWith(1)
-    expect(alVaciar).toHaveBeenCalledTimes(1)
+    await usuario.click(screen.getAllByRole('button', { name: 'Eliminar' })[1])
+    expect(leerCarritoGuardado().map((l) => l.id)).toEqual([5])
+
+    await usuario.click(screen.getByRole('button', { name: 'Vaciar carrito' }))
+    expect(leerCarritoGuardado()).toEqual([])
+    expect(screen.getByText('Tu carrito está vacío por el momento.')).toBeInTheDocument()
   })
 })
 
 describe('<Encabezado />', () => {
   it('muestra la cantidad del carrito y los botones de sesión', () => {
-    render(<Encabezado cantidadCarrito={3} usuario={null} alCerrarSesion={jasmine.createSpy()} />)
-    expect(screen.getByRole('button', { name: /Carrito 3/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Iniciar sesión' })).toBeInTheDocument()
+    renderizarConRouter(<Encabezado cantidadCarrito={3} usuario={null} alCerrarSesion={jasmine.createSpy()} />)
+    expect(screen.getByText(/Carrito/)).toHaveTextContent('Carrito 3')
+    expect(screen.getByText('Iniciar sesión')).toHaveAttribute('href', '/login')
   })
 
   it('con sesión iniciada saluda al usuario y permite cerrar sesión', async () => {
     const usuario = userEvent.setup()
     const alCerrarSesion = jasmine.createSpy()
-    render(<Encabezado cantidadCarrito={0} usuario={{ nombre: 'Ana Pérez', correo: 'ana@duoc.cl', rol: 'Cliente' }} alCerrarSesion={alCerrarSesion} />)
+    renderizarConRouter(<Encabezado cantidadCarrito={0} usuario={{ nombre: 'Ana Pérez', correo: 'ana@duoc.cl', rol: 'Cliente' }} alCerrarSesion={alCerrarSesion} />)
 
     expect(screen.getByText('Hola, Ana Pérez')).toBeInTheDocument()
     await usuario.click(screen.getByRole('button', { name: 'Cerrar sesión' }))

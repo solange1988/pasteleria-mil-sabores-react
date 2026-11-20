@@ -4,9 +4,11 @@ import Catalogo from '../components/Catalogo.jsx'
 import Cargando from '../components/Cargando.jsx'
 import useCarga from '../hooks/useCarga.js'
 import { listarProductos, categoriasDe } from '../data/productos.js'
+import { useCarrito } from '../context/CarritoContext.jsx'
 
 // Catálogo con buscador y filtro por categoría (estado local del componente)
-function Productos({ alAgregar }) {
+function Productos() {
+  const { agregar } = useCarrito()
   const [busqueda, setBusqueda] = useState('')
   const [categoria, setCategoria] = useState('')
 
@@ -47,7 +49,7 @@ function Productos({ alAgregar }) {
         </Col>
       </Row>
 
-      <Cargando carga={carga}>{() => <Catalogo productos={productos} alAgregar={alAgregar} />}</Cargando>
+      <Cargando carga={carga}>{() => <Catalogo productos={productos} alAgregar={agregar} />}</Cargando>
     </Container>
   )
 }

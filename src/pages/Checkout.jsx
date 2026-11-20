@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Container, Card, Form, Button, Row, Col, Alert } from 'react-bootstrap'
 import CampoTexto from '../components/CampoTexto.jsx'
 import CamposRegion from '../components/CamposRegion.jsx'
@@ -8,6 +9,8 @@ import { crearOrden, RECHAZADA } from '../data/ordenes.js'
 import { calcularTotales } from '../utils/descuentos.js'
 import formatearPrecio from '../utils/formato.js'
 import { validarNombre, validarCorreo, validarRequerido } from '../utils/validaciones.js'
+import { useCarrito } from '../context/CarritoContext.jsx'
+import { useSesion } from '../context/SesionContext.jsx'
 
 const VALIDADORES = {
   nombre: validarNombre,
@@ -33,8 +36,10 @@ function ResumenTotales({ totales, etiquetaTotal }) {
   )
 }
 
-// Props: carrito, usuario (objeto con sesión iniciada o null) y alConfirmar (vacía el carrito)
-function Checkout({ carrito, usuario, alConfirmar }) {
+// El carrito viene del contexto del carrito y el usuario (o null) del contexto de sesión.
+function Checkout() {
+  const { carrito, vaciar } = useCarrito()
+  const { usuario } = useSesion()
   // Si el usuario inició sesión, sus datos se completan automáticamente
   const [primerNombre = '', ...resto] = (usuario?.nombre ?? '').split(' ')
   const form = useFormulario(
@@ -73,7 +78,7 @@ function Checkout({ carrito, usuario, alConfirmar }) {
         setResultado({ exito: false, orden, lineas, faltantes: orden.faltantes })
       } else {
         setResultado({ exito: true, orden, lineas, faltantes: [] })
-        alConfirmar()
+        vaciar() // compra aprobada: se vacía el carrito
       }
     } catch (e) {
       setError(e.message)
@@ -105,7 +110,7 @@ function Checkout({ carrito, usuario, alConfirmar }) {
           <p><strong>Dirección:</strong> {orden.direccion}</p>
           <TablaCarrito carrito={resultado.lineas} />
           <ResumenTotales totales={orden} etiquetaTotal={resultado.exito ? 'Total pagado' : 'Total a pagar'} />
-          {resultado.exito && <Button href="#/productos" variant="chocolate">Seguir comprando</Button>}
+          {resultado.exito && <Button as={Link} to="/productos" variant="chocolate">Seguir comprando</Button>}
         </Card>
       </Container>
     )
@@ -115,7 +120,7 @@ function Checkout({ carrito, usuario, alConfirmar }) {
     return (
       <Container className="py-5 text-center">
         <p>No hay productos para pagar.</p>
-        <Button href="#/productos" variant="chocolate">Ver productos</Button>
+        <Button as={Link} to="/productos" variant="chocolate">Ver productos</Button>
       </Container>
     )
   }

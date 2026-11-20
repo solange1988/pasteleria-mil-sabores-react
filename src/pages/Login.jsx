@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Container, Card, Form, Button, Alert } from 'react-bootstrap'
 import CampoTexto from '../components/CampoTexto.jsx'
 import useFormulario from '../hooks/useFormulario.js'
 import { iniciarSesion } from '../data/usuarios.js'
 import { validarCorreoPermitido, validarContrasena } from '../utils/validaciones.js'
+import { useSesion } from '../context/SesionContext.jsx'
 
 const VALIDADORES = {
   correo: validarCorreoPermitido,
@@ -11,9 +13,10 @@ const VALIDADORES = {
 }
 
 // POST /api/v1/auth/login. Si las credenciales son correctas, el backend responde
-// { token, tokenRenovacion, usuario } y se lo entregamos a App con alIniciarSesion.
-// Prop aviso: mensaje opcional (por ejemplo, "Tu sesión expiró").
-function Login({ alIniciarSesion, aviso }) {
+// { token, tokenRenovacion, usuario } y se lo entregamos al contexto de sesión (iniciar), que lo guarda
+// y lleva al usuario a su página inicial. "aviso" es un mensaje opcional (por ejemplo, "Tu sesión expiró").
+function Login() {
+  const { iniciar, aviso } = useSesion()
   const form = useFormulario({ correo: '', contrasena: '' }, VALIDADORES)
   const [errorCredenciales, setErrorCredenciales] = useState('')
   const [enviando, setEnviando] = useState(false)
@@ -27,7 +30,7 @@ function Login({ alIniciarSesion, aviso }) {
     try {
       const respuesta = await iniciarSesion(form.valores.correo, form.valores.contrasena)
       form.reiniciar()
-      alIniciarSesion(respuesta)
+      iniciar(respuesta)
     } catch (error) {
       setErrorCredenciales(error.estado === 401 ? 'Correo o contraseña incorrectos.' : error.message)
     } finally {
@@ -50,7 +53,7 @@ function Login({ alIniciarSesion, aviso }) {
           </Button>
         </Form>
         <p className="text-center mt-3 mb-0">
-          ¿No tienes cuenta? <a href="#/registro">Regístrate aquí</a>
+          ¿No tienes cuenta? <Link to="/registro">Regístrate aquí</Link>
         </p>
       </Card>
     </Container>

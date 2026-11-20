@@ -59,8 +59,8 @@ describe('auth/permisos.js (restricciones por rol)', () => {
   })
 
   it('después del login, admin y vendedor van al panel; el cliente a la tienda', () => {
-    expect(paginaInicial(ADMIN)).toBe('#/admin')
-    expect(paginaInicial(VENDEDOR)).toBe('#/admin')
-    expect(paginaInicial(CLIENTE)).toBe('#/')
+    expect(paginaInicial(ADMIN)).toBe('/admin')
+    expect(paginaInicial(VENDEDOR)).toBe('/admin')
+    expect(paginaInicial(CLIENTE)).toBe('/')
   })
 })

@@ -1,8 +1,9 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Catalogo from '../components/Catalogo.jsx'
 import Productos from '../pages/Productos.jsx'
 import { simularApi, productosPrueba } from './apiFalsa.js'
+import { renderizarConRouter as render, renderizarPagina } from './rutas.js'
 
 const LISTA = [
   { id: 1, nombre: 'Torta Cuadrada de Chocolate', categoria: 'Tortas Cuadradas', precio: 45000, stock: 10, imagen: '/img/logo.png' },
@@ -27,7 +28,7 @@ describe('<Productos /> (buscador)', () => {
   it('al escribir en el buscador filtra el catálogo (estado)', async () => {
     simularApi({ 'GET /productos': productosPrueba() })
     const usuario = userEvent.setup()
-    render(<Productos alAgregar={jasmine.createSpy()} />)
+    renderizarPagina(<Productos />, { ruta: '/productos' })
     expect(await screen.findAllByRole('button', { name: 'Añadir al carrito' })).toHaveSize(16)
 
     await usuario.type(screen.getByLabelText('Buscar productos'), 'brownie')

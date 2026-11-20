@@ -11,13 +11,15 @@ import { listarProductosCriticos } from '../data/productos.js'
 import { listarOrdenes, cambiarEstadoOrden } from '../data/ordenes.js'
 import { listarUsuarios, crearUsuario, actualizarUsuario, eliminarUsuario } from '../data/usuarios.js'
 import { puede } from '../auth/permisos.js'
+import { useSesion } from '../context/SesionContext.jsx'
 
-// Panel interno. App ya verificó que el usuario tiene el permiso "panel" (Administrador o Vendedor).
+// Panel interno. RutaProtegida ya verificó que el usuario tiene el permiso "panel" (Administrador o Vendedor).
 // Cada pestaña aparece solo si el rol tiene el permiso correspondiente (auth/permisos.js):
 //  - Administrador: Productos (CRUD), Stock crítico, Órdenes (cambiar estado), Usuarios y Reportes
 //  - Vendedor: Productos y Órdenes, solo lectura (lista y detalle)
 // Cada pestaña carga sus datos del backend al abrirse (mountOnEnter).
-function Admin({ usuario }) {
+function Admin() {
+  const { usuario } = useSesion()
   const esVendedor = usuario.rol === 'Vendedor'
 
   const pestanas = [

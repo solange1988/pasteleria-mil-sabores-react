@@ -1,27 +1,31 @@
+import { Link, useParams } from 'react-router-dom'
 import { Container, Row, Col, Button, Badge, Alert } from 'react-bootstrap'
 import Cargando from '../components/Cargando.jsx'
 import useCarga from '../hooks/useCarga.js'
 import { obtenerProducto } from '../data/productos.js'
 import formatearPrecio, { porcentajeOferta } from '../utils/formato.js'
 import { precioVigente } from '../utils/carrito.js'
+import { useCarrito } from '../context/CarritoContext.jsx'
 
-// GET /api/v1/productos/{id}. Si el backend responde 404, el producto no existe.
-function DetalleProducto({ id, alAgregar }) {
+// Ruta /producto/:id → GET /api/v1/productos/{id}. Si el backend responde 404, el producto no existe.
+function DetalleProducto() {
+  const { id } = useParams() // el :id de la URL
+  const { agregar } = useCarrito()
   const carga = useCarga(() => obtenerProducto(id), [id])
 
   if (carga.estado === 404) {
     return (
       <Container className="py-5">
         <Alert variant="warning">El producto no existe.</Alert>
-        <a href="#/productos">&larr; Volver a productos</a>
+        <Link to="/productos">&larr; Volver a productos</Link>
       </Container>
     )
   }
 
   return (
     <Container className="py-4">
-      <a href="#/productos">&larr; Volver a productos</a>
-      <Cargando carga={carga}>{(producto) => <Ficha producto={producto} alAgregar={alAgregar} />}</Cargando>
+      <Link to="/productos">&larr; Volver a productos</Link>
+      <Cargando carga={carga}>{(producto) => <Ficha producto={producto} alAgregar={agregar} />}</Cargando>
     </Container>
   )
 }

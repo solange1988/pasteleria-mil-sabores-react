@@ -1,16 +1,21 @@
+import { Link } from 'react-router-dom'
 import { Container, Button } from 'react-bootstrap'
 import TablaCarrito from '../components/TablaCarrito.jsx'
 import { calcularTotales } from '../utils/descuentos.js'
 import formatearPrecio from '../utils/formato.js'
+import { useCarrito } from '../context/CarritoContext.jsx'
+import { useSesion } from '../context/SesionContext.jsx'
 
-// "usuario" es opcional: si hay sesión iniciada se aplican sus descuentos
-function Carrito({ carrito, usuario, alCambiarCantidad, alQuitar, alVaciar }) {
+// El carrito y sus acciones vienen del contexto. Si hay sesión iniciada se aplican los descuentos del usuario.
+function Carrito() {
+  const { carrito, cambiarCantidad, quitar, vaciar } = useCarrito()
+  const { usuario } = useSesion()
   if (carrito.length === 0) {
     return (
       <Container className="py-5 text-center">
         <h1>Mi Carrito de Compras</h1>
         <p>Tu carrito está vacío por el momento.</p>
-        <Button href="#/productos" variant="chocolate">Ver productos</Button>
+        <Button as={Link} to="/productos" variant="chocolate">Ver productos</Button>
       </Container>
     )
   }
@@ -20,7 +25,7 @@ function Carrito({ carrito, usuario, alCambiarCantidad, alQuitar, alVaciar }) {
   return (
     <Container className="py-4">
       <h1 className="mb-4">Mi Carrito de Compras</h1>
-      <TablaCarrito carrito={carrito} alCambiarCantidad={alCambiarCantidad} alQuitar={alQuitar} />
+      <TablaCarrito carrito={carrito} alCambiarCantidad={cambiarCantidad} alQuitar={quitar} />
       <div className="d-flex flex-wrap justify-content-end align-items-center gap-3">
         <div className="text-end">
           {totales.descuento > 0 && (
@@ -31,8 +36,8 @@ function Carrito({ carrito, usuario, alCambiarCantidad, alQuitar, alVaciar }) {
           )}
           <span className="fs-4 fw-bold">Total: {formatearPrecio(totales.total)}</span>
         </div>
-        <Button variant="secondary" onClick={alVaciar}>Vaciar carrito</Button>
-        <Button href="#/checkout" variant="success">Comprar ahora</Button>
+        <Button variant="secondary" onClick={vaciar}>Vaciar carrito</Button>
+        <Button as={Link} to="/checkout" variant="success">Comprar ahora</Button>
       </div>
     </Container>
   )

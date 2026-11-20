@@ -1,10 +1,10 @@
 # Pastelería Mil Sabores · Frontend (React)
 
-Tienda en línea hecha con **React + Vite + React-Bootstrap**, conectada a un backend **Spring Boot** mediante una API REST consumida con **axios**.
+Tienda en línea hecha con **React + Vite + React-Bootstrap + React Router**, conectada a un backend **Spring Boot** mediante una API REST consumida con **axios**.
 Proyecto de DSY1104 Desarrollo Full Stack II (Evaluaciones Parciales 2 y 3).
 
 - Backend: https://github.com/solange1988/pasteleria-mil-sabores-backend
-- Pruebas: **Jasmine + Karma** con **Testing Library** (223 pruebas, cobertura sobre 87 %)
+- Pruebas: **Jasmine + Karma** con **Testing Library** (233 pruebas, cobertura sobre 91 %)
 
 ---
 
@@ -37,7 +37,14 @@ Si el backend está en otra dirección, copia `.env.example` como `.env` y cambi
 | `npm run test:cobertura` | Mide la cobertura (abre `cobertura/html/index.html`) |
 | `npm run build` | Genera la versión final en `dist/` |
 
-## 3. Integración con el backend
+## 3. Navegación y estado compartido
+
+- **React Router** (`react-router-dom`): `main.jsx` envuelve la app en `<BrowserRouter>` y `App.jsx` define las rutas con `<Routes>` / `<Route>` (`/`, `/productos`, `/producto/:id`, `/categorias/:slug`, `/carrito`, `/checkout`, `/login`, `/perfil`, `/admin`, ...). Los enlaces usan `<Link>` / `<NavLink>` y las páginas leen los parámetros con `useParams()`.
+- **Contexto de sesión** (`src/context/SesionContext.jsx`): `useSesion()` entrega `usuario`, `iniciar`, `cerrar` y `actualizarUsuario` a cualquier componente.
+- **Contexto del carrito** (`src/context/CarritoContext.jsx`): `useCarrito()` entrega `carrito`, `cantidad`, `agregar`, `quitar`, `cambiarCantidad` y `vaciar`.
+- Así no se pasan props de página en página: el encabezado, las tarjetas, el carrito y el checkout leen el mismo estado.
+
+## 4. Integración con el backend
 
 ```
 Página (pages/*.jsx)
@@ -49,7 +56,7 @@ data/productos.js · data/usuarios.js · data/ordenes.js     ← una función po
 api/cliente.js  ── axios ──►  http://localhost:8080/api/v1/...  ──►  Spring Boot ──► MySQL
    │  agrega "Authorization: Bearer <token>", convierte errores, renueva el token
    ▼
-auth/sesion.js (localStorage)     auth/permisos.js (qué ve cada rol)
+context/SesionContext.jsx → auth/sesion.js (localStorage)     auth/permisos.js (qué ve cada rol)
 ```
 
 | Archivo | Qué hace |
@@ -57,7 +64,8 @@ auth/sesion.js (localStorage)     auth/permisos.js (qué ve cada rol)
 | `src/api/cliente.js` | Única puerta hacia la API: URL base, JSON, token, manejo de errores (400/401/403/404) y renovación automática del token |
 | `src/auth/sesion.js` | Guarda `{ token, tokenRenovacion, usuario }` en localStorage para que la sesión siga al recargar |
 | `src/auth/permisos.js` | Permisos por rol (Administrador, Vendedor, Cliente) |
-| `src/components/RutaProtegida.jsx` | Protege páginas: sin sesión pide login; sin permiso muestra «No tienes permisos» |
+| `src/context/SesionContext.jsx` | Estado de la sesión compartido con toda la app (`useSesion`) |
+| `src/components/RutaProtegida.jsx` | Protege rutas: sin sesión pide login; sin permiso muestra «No tienes permisos» |
 | `src/hooks/useCarga.js` + `components/Cargando.jsx` | Cargan datos de la API mostrando «Cargando...» o el error con «Reintentar» |
 
 ### Sesión (persistencia y seguridad)
@@ -70,7 +78,7 @@ auth/sesion.js (localStorage)     auth/permisos.js (qué ve cada rol)
 
 ### Restricciones por rol
 
-| Rol | Menú | Panel (`#/admin`) |
+| Rol | Menú | Panel (`/admin`) |
 |---|---|---|
 | Visitante | Tienda | Pide iniciar sesión |
 | Cliente | Tienda + Perfil | «No tienes permisos para ver esta página» |
@@ -79,12 +87,13 @@ auth/sesion.js (localStorage)     auth/permisos.js (qué ve cada rol)
 
 El frontend solo decide qué se **muestra**; la seguridad real está en el backend, que responde 401/403 si falta el token o el rol.
 
-## 4. Estructura
+## 5. Estructura
 
 ```
 src/
   api/cliente.js        Cliente HTTP (axios + interceptores) hacia el backend
   auth/                 sesion.js y permisos.js
+  context/              SesionContext.jsx y CarritoContext.jsx (estado compartido)
   data/                 productos.js, usuarios.js, ordenes.js (API) · blogs.js y regiones.js (datos fijos)
   hooks/                useFormulario.js, useCarga.js
   components/           Encabezado, Catalogo, TarjetaProducto, TablaCarrito, CampoTexto, CamposRegion,
@@ -93,19 +102,20 @@ src/
   pages/                Inicio, Productos, DetalleProducto, Categorias, Ofertas, Carrito, Checkout,
                         Registro, Login, Perfil, Admin, Nosotros, Blogs, BlogDetalle, Contacto
   utils/                carrito, descuentos (vista previa), formato, reportes, validaciones
-  test/ y karma/        Pruebas (test/apiFalsa.js simula el backend con un adaptador falso de axios)
+  test/ y karma/        Pruebas (test/apiFalsa.js simula el backend; test/rutas.js monta Router y contextos)
 ```
 
-## 5. Pruebas
+## 6. Pruebas
 
-`npm run test:ejecutar` corre 223 pruebas. Las que tocan la API usan `src/test/apiFalsa.js`, que reemplaza el adaptador de axios (la pieza que envía la petición por la red) con un espía de Jasmine que responde como el backend. Así se prueba el camino completo (página → data → cliente → axios con sus interceptores) sin levantar Spring Boot:
+`npm run test:ejecutar` corre 233 pruebas. Las que tocan la API usan `src/test/apiFalsa.js`, que reemplaza el adaptador de axios (la pieza que envía la petición por la red) con un espía de Jasmine que responde como el backend. Así se prueba el camino completo (página → data → cliente → axios con sus interceptores) sin levantar Spring Boot:
 
 - Cliente de la API: URL versionada, token en el encabezado, errores, renovación del token y sesión expirada.
 - Sesión y permisos: persistencia en localStorage, roles y página inicial de cada rol.
 - Páginas: catálogo, detalle (404), checkout (pago aceptado, rechazado por stock y sin conexión), login, registro, perfil.
 - Panel: el administrador ve 5 pestañas; el vendedor solo 2 y en modo lectura.
+- Navegación y contextos: rutas de React Router (`MemoryRouter` en las pruebas), parámetros de la URL y el estado compartido de sesión y carrito.
 
-## 6. GitHub
+## 7. GitHub
 
 ```bash
 git add .
